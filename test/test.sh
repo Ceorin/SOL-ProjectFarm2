@@ -1,5 +1,13 @@
 #!/bin/bash
 
+##################################################
+#
+#  NON MODIFICARE NESSUNA LINEA DI QUESTO FILE!
+#
+#
+##################################################
+
+
 if [ ! -e generafile ];
 then
     echo "Compilare generafile, eseguibile mancante!";
@@ -98,9 +106,28 @@ else
 fi
 
 # verifica di memory leaks
-valgrind --leak-check=full --error-exitcode=1 --log-file=/dev/null ./farm file* -d testdir 2>&1 > /dev/null
+valgrind --leak-check=full --trace-children=yes --error-exitcode=1 --log-file=/dev/null ./farm file* -d testdir 2>&1 > /dev/null
 if [[ $? != 0 ]]; then
     echo "test5 failed"
 else
     echo "test5 passed"
 fi
+
+# test SIGUSR1 SIGUSR2
+./farm -n 1 -d testdir -q 1 -t 1000 file* 2>&1 > /dev/null &
+pid=$!
+sleep 5
+pkill -USR2 farm
+sleep 0.5
+pkill -USR1 farm
+pkill -USR1 farm
+pkill -USR2 farm
+sleep 0.5
+pkill farm
+wait $pid
+if [[ $? != 0 ]]; then
+    echo "test6 failed"
+else
+    echo "test6 passed"
+fi
+

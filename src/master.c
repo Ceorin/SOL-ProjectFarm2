@@ -1,6 +1,8 @@
+#include "utils.h"
+#include "master.h"
+#include <stdio.h>
 
-
-int main(int argc, char* argv[]) {
-    
-    return 0;
-}
+void masterThread(){
+    fprintf(stdout, "Parte master in esecuzione!\n");
+    fflush(stdout);
+}//?
