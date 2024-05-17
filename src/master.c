@@ -1,5 +1,5 @@
 #include "utils.h"
-#include "mylist.h"
+#include "myList.h"
 #include "master.h"
 #include "worker_pool.h"
 // solo per il test (lasciata threadpool altrimenti)
@@ -17,8 +17,14 @@
 
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
 
 #include <pthread.h>
+
+struct dir_or_file {
+    enum {_is_D, _is_F} dor_type;
+    char pathname [1+_DEF_PATHNAME_MAX_SIZE];
+} typedef maybeFile;
 
 void masterThread(int argc, char** argv) {
     fprintf(stdout, "Parte master in esecuzione!\n");
@@ -27,6 +33,14 @@ void masterThread(int argc, char** argv) {
     size_t qlen = _DEF_QLEN;
     size_t thread_num = _DEF_NTHREAD;
     struct timespec qdelay;
+
+    errno = 0;
+    list_t *maybe_files = empty_List(false); // FALSE = it's not a unique set
+    if (maybe_files == NULL) {
+        perror("Creating list");
+        exit(EXIT_FAILURE);
+    }
+
     
     // getting main options
     char opt;
@@ -158,16 +172,55 @@ void masterThread(int argc, char** argv) {
                 if (!(optarg && *optarg)) // Se non sono settati bene i parametri
                     fprintf(stderr, "Error reading -%c!\n", opt);
                 else { // TODO creat dir list structure and manage it here
-                    // DEBUG
-                    fprintf(stdout, "%c - dir?: %s\n", opt, optarg);
+                    if (optarg[0]=='-') { // missing argument?
+                    if (optarg[1]=='n' || optarg[1] =='q' || optarg[1] =='t' || optarg[1] == 'd') {
+                        fprintf (stderr, "%c: missing argument! (cannot use %s)\n", opt, optarg);
+                        optind -=1; // use this optarg as next opt
+                        break;
+                        }
+                    }
+                    // check about it being a valid path later
+                    maybeFile *wrapper;
+                    test_error(NULL, wrapper = (maybeFile*) malloc(sizeof(maybeFile)), "Creating dir or file wrapper");
+                    strncpy (wrapper->pathname, optarg, _DEF_PATHNAME_MAX_SIZE);
+                    wrapper->dor_type = _is_D;
+                    int ret = add_Last(NULL, wrapper, maybe_files); 
+                    if (ret < 0) {
+                        free(wrapper);
+                        fprintf (stderr, "%d\t", ret);
+                        perror("Adding a directory");
+                        errno = 0;
+                    } else {  
+                        // DEBUG
+                        fprintf(stdout, "%c - dir?: %s\n", opt, optarg);
+                    }
                 }
                 break;
             case 1: // is a file? non-opt argument
                 if (!(optarg && *optarg)) // Se non sono settati bene i parametri
                     fprintf(stderr, "Error reading -%c!\n", opt);
-                else { // TODO create file list structure and manage it here
-                    // DEBUG
-                    fprintf(stdout, "file?: %s\n", optarg);
+                else { // TODO creat dir list structure and manage it here
+                    if (optarg[0]=='-') { // Is it an option on its own?
+                    if (optarg[1]=='n' || optarg[1] =='q' || optarg[1] =='t' || optarg[1] == 'd') {
+                        fprintf (stderr, "%s: missing argument\n", optarg);
+                        break;
+                        }
+                    }
+                    // check about it being a valid path later
+                    maybeFile *wrapper;
+                    test_error(NULL, wrapper = (maybeFile*) malloc(sizeof(maybeFile)), "Creating dir or file wrapper");
+                    strncpy (wrapper->pathname, optarg, _DEF_PATHNAME_MAX_SIZE);
+                    wrapper->dor_type = _is_F;
+                    int ret = add_Last(NULL, wrapper, maybe_files); 
+                    if (ret < 0) {
+                        free(wrapper);
+                        fprintf (stderr, "%d\t", ret);
+                        perror("Adding a file!");
+                        errno = 0;
+                    } else {  
+                        // DEBUG
+                        fprintf(stdout, "file?: %s\n", optarg);
+                    }
                 }
                 break;
             case ':': // Errors to check..?
@@ -189,7 +242,21 @@ void masterThread(int argc, char** argv) {
     for (int i = optind; i<argc; i++) { // check files validity
         fprintf(stdout, "File?: %s\n", argv[i]);
     } */
-
+    
+    // TEST if list has been created properly
+    
+    fprintf(stdout, "printing list:\n");
+    fprintf(stdout, "Size: %d\t Head:%p\t Last:%p\t Unique? %s\n", maybe_files->size, (void*) maybe_files->head, (void*) maybe_files->last, (maybe_files->unique) ? "Yes" : "No");
+    maybeFile* test;
+    int i = 0;
+    while (i < maybe_files->size) {
+        test = list_getAt(maybe_files, i, false);
+        fprintf(stdout, "Element %d -> value: %s\ttype: %s\n", i, test->pathname, (test->dor_type == _is_D) ? "Dir" : "File");
+        i++;
+    }
+    fprintf(stdout, "\n");
+    
+    /*
     init_fileStack(qlen);
     // TEST DI CREAZIONE THREAD!
     fflush(stdout);
@@ -210,5 +277,7 @@ void masterThread(int argc, char** argv) {
         }
     }
 
-    nanosleep(&qdelay, NULL);
+    nanosleep(&qdelay, NULL);*/
+
+
 }//?

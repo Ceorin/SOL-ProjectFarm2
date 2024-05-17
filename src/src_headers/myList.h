@@ -2,6 +2,8 @@
 #define MY_LIST_HEADER
     typedef struct node node_t;
 
+    #include <stdbool.h>
+
     typedef struct list_t {
         node_t* head;
         node_t* last;

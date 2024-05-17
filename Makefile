@@ -6,7 +6,6 @@ CPPFLAGS = -pthread
 PROJECT_DIR = .
 SOURCE = $(PROJECT_DIR)/src
 HEADERS = $(PROJECT_DIR)/src/src_headers
-UTILS = $(PROJECT_DIR)/src/utils
 BUILD_PATH = $(PROJECT_DIR)/build
 
 TEMP_FILES = $(PROJECT_DIR)/tmp
@@ -25,7 +24,7 @@ MAIN_OBJ := $(filter-out $(BUILD_PATH)/collector.o, $(OBJECTS))
 farm : $(MAIN_OBJ) collector
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(MAIN_OBJ) -o $@
 
-collector : $(BUILD_PATH)/collector.o
+collector : $(BUILD_PATH)/collector.o $(BUILD_PATH)/myList.o
 	$(CC) $(CFLAGS) $(CPPFLAGS) $^ -o $@
 
 #Header dependencies (will join the general object dependency rule below)
@@ -33,16 +32,18 @@ collector : $(BUILD_PATH)/collector.o
 $(BUILD_PATH)/collector.o : $(HEADERS)/collector.h $(HEADERS)/thread_task.h 
 #main needs every header
 $(BUILD_PATH)/main.o : $(wildcard $(HEADERS)/*.h) $(wildcard$(UTILS)/*.h)
-#master needs workers' interface
-$(BUILD_PATH)/master.o : $(HEADERS)/master.h $(HEADERS)/worker_pool.h
+#master needs workers' interface and list
+$(BUILD_PATH)/master.o : $(HEADERS)/master.h $(HEADERS)/worker_pool.h $(HEADERS)/myList.h
 #the thread pool needs the function of course
-$(BUILD_PATH)/worker_pool.o : $(HEADERS)/worker_pool.h $(HEADERS)/thread_task.h
+$(BUILD_PATH)/worker_pool.o : $(HEADERS)/worker_pool.h $(HEADERS)/thread_task.h $(HEADERS)/myList.h
 #the thread function will interact with requests to the threadpool?
 $(BUILD_PATH)/thread_task.o : $(HEADERS)/thread_task.h $(HEADERS)/worker_pool.h
 
+$(BUILD_PATH)/myList.o : $(HEADERS)/myList.h
+
 #general rule
-$(OBJECTS): $(BUILD_PATH)/%.o : $(SOURCE)/%.c $(UTILS)/utils.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -I $(HEADERS) $(UTILS) -o $@ 
+$(OBJECTS): $(BUILD_PATH)/%.o : $(SOURCE)/%.c $(HEADERS)/utils.h
+	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -I $(HEADERS) -o $@ 
 
 #Pre-made test generation -> sets up test folder
 #Right now the test is managed by test.sh
