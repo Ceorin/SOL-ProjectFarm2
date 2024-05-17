@@ -3,36 +3,78 @@ CC = gcc
 CFLAGS = -std=c99 -Wall -pedantic
 CPPFLAGS = -pthread
 
-SOURCE = src
-HEADERS = src/src_headers
-BUILD_PATH = build
+PROJECT_DIR = .
+SOURCE = $(PROJECT_DIR)/src
+HEADERS = $(PROJECT_DIR)/src/src_headers
+BUILD_PATH = $(PROJECT_DIR)/build
 
-TEMP_FILES = tmp
-TEST_FOLDER = test
+TEMP_FILES = $(PROJECT_DIR)/tmp
+TEST_FOLDER = $(PROJECT_DIR)/test
 
 SOURCE_FILES := $(wildcard $(SOURCE)/*.c)
-#TODO Fix this (v)
-OBJECTS := $(SOURCE_FILES:.c=.o)
+OBJECTS := $(patsubst $(SOURCE)/%.c, $(BUILD_PATH)/%.o, $(SOURCE_FILES))
+
+.PHONY: all prepareTest clean cleanTmp cleanBuild cleanTest test1
 
 all : prepareTest farm
 
-#Pre-made test generation -> sets up test folder
-#TODO add arguments or something to the execution!
-prepareTest : generafile
-	./generafile.exe 
-
-#Shouldn't be needed given generafile's a single-source program, but just for future use keeping track of the object should be better
-generafile : $(BUILD_PATH)/generafile.o
-	$(CC) $< -o $@
-
-$(BUILD_PATH)/generafile.o : generafile.c
-	$(CC) $(CFLAGS) $< -c $@
 
 #Main program
-farm : $(OBJECTS)
+farm : $(OBJECTS) collector
+	$(CC) $(CFLAGS) $(OBJECTS) -o $@
+
+collector : $(BUILD_PATH)/collector.o
+	$(CC) $(CFLAGS) $^ -o $@
+
+#Header dependencies (will join the general object dependency rule below)
+#collector needs worker's interface
+$(BUILD_PATH)/collector.o : $(HEADERS)/collector.h $(HEADERS)/workers.h 
+
+$(BUILD_PATH)/main.o : $(HEADERS)/*.h
+
+$(BUILD_PATH)/master.o : $(HEADERS)/master.h $(HEADERS)/workers.h
+$(BUILD_PATH)/workers.o : $(HEADERS)/workers.h $(HEADERS)/fun_task.h
+
+#general rule
+$(OBJECTS): $(BUILD_PATH)/%.o : $(SOURCE)/%.c $(HEADERS)/utils.h
+	$(CC) $(CFLAGS) $< -c -I $(HEADERS) -o $@ 
+
+#Pre-made test generation -> sets up test folder
+#Right now the test is managed by test.sh
+prepareTest : generafile
+
+#Shouldn't be needed given generafile's a single-source program, but just for future use keeping track of the object should be better
+generafile : $(TEST_FOLDER)/generafile.o
+	$(CC) $< -o $@
+
+$(TEST_FOLDER)/generafile.o : $(TEST_FOLDER)/generafile.c
+	$(CC) $(CFLAGS) $< -c -o $@
+
 
 
 #TODO hierarchy compilation
 
 #TODO test and utilities
 # .PHONY: clean cleanTmp cleanBuild cleanTest test1
+
+#TODO everything
+clean: cleanTmp cleanBuild cleanTest
+	-rm farm
+	-rm collector
+
+cleanTmp : 
+	-rm $(TEMP_FILES)/*
+
+cleanBuild : 
+	-rm $(BUILD_PATH)/*.o
+
+cleanTest :
+	-rm $(TEST_FOLDER)/*.o
+	-rm -f generafile
+
+test1 :
+	test/test.sh
+
+debugtest :
+	echo $(SOURCE_FILES)
+	echo $(OBJECTS)
