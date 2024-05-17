@@ -1,6 +1,6 @@
 #include "utils.h"
 #include "master.h"
-#include "workers.h"
+#include "worker_pool.h"
 
 // NOTA - UNA MACRO POSIX CAMBIA IL COMPORTAMENTO DI GETOPT
 // usleep is deprecated thus must use nanosleep
@@ -164,7 +164,7 @@ void masterThread(int argc, char** argv) {
                     fprintf(stdout, "file?: %s\n", optarg);
                 }
                 break;
-            case ':':
+            case ':': // Errors to check..?
             case '?':
             default:
                 if (!(optarg && *optarg))
@@ -179,7 +179,7 @@ void masterThread(int argc, char** argv) {
     if (optind < argc) {
         fprintf (stderr, "Argument not recognized: %s\n", argv[optind]);
     }
-    /* Old version
+    /* Old version - posix changes getopt behaviour so that it ends on the first non-option while missing options after that.
     for (int i = optind; i<argc; i++) { // check files validity
         fprintf(stdout, "File?: %s\n", argv[i]);
     } */

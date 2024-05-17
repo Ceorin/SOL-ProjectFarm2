@@ -29,15 +29,15 @@ collector : $(BUILD_PATH)/collector.o
 
 #Header dependencies (will join the general object dependency rule below)
 #collector needs worker's interface
-$(BUILD_PATH)/collector.o : $(HEADERS)/collector.h $(HEADERS)/workers.h 
+$(BUILD_PATH)/collector.o : $(HEADERS)/collector.h $(HEADERS)/thread_task.h 
 #main needs every header
 $(BUILD_PATH)/main.o : $(wildcard $(HEADERS)/*.h)
 #master needs workers' interface
-$(BUILD_PATH)/master.o : $(HEADERS)/master.h $(HEADERS)/workers.h
-#workers needs the function as well
-$(BUILD_PATH)/workers.o : $(HEADERS)/workers.h $(HEADERS)/fun_task.h
-
-$(BUILD_PATH)/fun_task.o : $(HEADERS)/fun_task.h
+$(BUILD_PATH)/master.o : $(HEADERS)/master.h $(HEADERS)/worker_pool.h
+#the thread pool needs the function of course
+$(BUILD_PATH)/worker_pool.o : $(HEADERS)/worker_pool.h $(HEADERS)/thread_task.h
+#the thread function will interact with requests to the threadpool?
+$(BUILD_PATH)/thread_task.o : $(HEADERS)/thread_task.h $(HEADERS)/worker_pool.h
 
 #general rule
 $(OBJECTS): $(BUILD_PATH)/%.o : $(SOURCE)/%.c $(HEADERS)/utils.h
