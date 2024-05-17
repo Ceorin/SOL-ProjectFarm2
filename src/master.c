@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "mylist.h"
 #include "master.h"
 #include "worker_pool.h"
 // solo per il test (lasciata threadpool altrimenti)
@@ -7,7 +8,8 @@
 // NOTA - UNA MACRO POSIX CAMBIA IL COMPORTAMENTO DI GETOPT
 // usleep is deprecated thus must use nanosleep
 // are there better posix sources?
-//#define _POSIX_C_SOURCE 199309L
+//#define _POSIX_C_SOURCE 199309L 
+// ^ Defined with pthread
 #include <time.h>
 #include <stdio.h>
 #include <unistd.h>

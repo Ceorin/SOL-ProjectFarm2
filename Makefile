@@ -6,6 +6,7 @@ CPPFLAGS = -pthread
 PROJECT_DIR = .
 SOURCE = $(PROJECT_DIR)/src
 HEADERS = $(PROJECT_DIR)/src/src_headers
+UTILS = $(PROJECT_DIR)/src/utils
 BUILD_PATH = $(PROJECT_DIR)/build
 
 TEMP_FILES = $(PROJECT_DIR)/tmp
@@ -31,7 +32,7 @@ collector : $(BUILD_PATH)/collector.o
 #collector needs worker's interface
 $(BUILD_PATH)/collector.o : $(HEADERS)/collector.h $(HEADERS)/thread_task.h 
 #main needs every header
-$(BUILD_PATH)/main.o : $(wildcard $(HEADERS)/*.h)
+$(BUILD_PATH)/main.o : $(wildcard $(HEADERS)/*.h) $(wildcard$(UTILS)/*.h)
 #master needs workers' interface
 $(BUILD_PATH)/master.o : $(HEADERS)/master.h $(HEADERS)/worker_pool.h
 #the thread pool needs the function of course
@@ -40,8 +41,8 @@ $(BUILD_PATH)/worker_pool.o : $(HEADERS)/worker_pool.h $(HEADERS)/thread_task.h
 $(BUILD_PATH)/thread_task.o : $(HEADERS)/thread_task.h $(HEADERS)/worker_pool.h
 
 #general rule
-$(OBJECTS): $(BUILD_PATH)/%.o : $(SOURCE)/%.c $(HEADERS)/utils.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -I $(HEADERS) -o $@ 
+$(OBJECTS): $(BUILD_PATH)/%.o : $(SOURCE)/%.c $(UTILS)/utils.h
+	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -I $(HEADERS) $(UTILS) -o $@ 
 
 #Pre-made test generation -> sets up test folder
 #Right now the test is managed by test.sh
