@@ -266,22 +266,30 @@ void masterThread(int argc, char** argv) {
         test_error_isNot(0, errno = pthread_detach(workers[i]), "Detaching thread");
     }
 
+    int delthread = 0;
     for (int i = 0; i < maybe_files->size; i++) {
         maybeFile *test = (maybeFile*) list_getAt(maybe_files, i, false);
         int ret = add_request(test->pathname);
         fprintf(stdout, "adding %s, returns %d\n", test->pathname, ret);        
         
-        if (i%10 == 0) {
+        if (i%10== 0) {
             fprintf(stderr, "requesting deletion\n");
             prototype_delete_request();
+            delthread++;
         }
     }
 
+    for (; delthread < 5; delthread++) {
+            fprintf(stderr, "requesting deletion\n");
+            prototype_delete_request();
+    }
     nanosleep(&qdelay, NULL);
 
     // Frees used structures
     size_t testSize = maybe_files->size;
     test_error_isNot(testSize, delete_List(&maybe_files, &free), "Deleting file and directory list");
-
+    //TODO better
+    close_fileStack();
+    delete_fileStack ();    
 
 }//?

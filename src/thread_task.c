@@ -16,11 +16,12 @@ struct stackData {
 } typedef stackData;
 
 stackData *tasks_stack = NULL;
-unsigned long next = 0; // next item to take, will be initialized to -1.
-unsigned long maxsize = 100; // size of the stack after initialization
+unsigned long next; // next item to take, will be initialized to -1.
+unsigned long maxsize; // size of the stack after initialization
 
 // TODO - requests to remove threads that are waiting.
 unsigned long requested_terminations; 
+short canAdd; // can be read without mutex; can only be modified (via mutex) by close_fileStack, and only to 0.
 
 static pthread_mutex_t mutex_stack = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t can_push = PTHREAD_COND_INITIALIZER;
@@ -41,8 +42,40 @@ int init_fileStack (size_t qlen)  {
 
     next = 0;
     requested_terminations = 0;
+    canAdd = 1;
     pthread_mutex_unlock(&mutex_stack);
     return 0; // success
+}
+
+// TODO?
+void close_fileStack () {
+    pthread_mutex_lock(&mutex_stack);
+    canAdd = 0;
+    pthread_cond_signal(&can_push);
+    pthread_mutex_unlock(&mutex_stack);
+}
+
+// TODO BETTER
+int delete_fileStack () {
+    if (canAdd)
+        return -1;
+    pthread_mutex_lock(&mutex_stack);
+    while (next>0) {
+        fprintf(stdout, "waiting for stack to empty\n");
+        pthread_cond_wait(&can_push, &mutex_stack);
+    }
+    pthread_mutex_unlock(&mutex_stack);
+    // next is 0, add is negated
+    // TODO IN THREADPOOL: SET REQUESTED TERMINATIONS TO NUMBER OF RUNNING THREAD
+    requested_terminations += 100;
+    free(tasks_stack);
+    pthread_cond_signal(&can_pop);
+    // TODO atexit
+    sleep(1);
+    pthread_cond_destroy(&can_push);
+    pthread_cond_destroy(&can_pop);
+    pthread_mutex_destroy(&mutex_stack);
+    return 0;
 }
 
 /* requests to work on the file with path filename. 
@@ -52,22 +85,29 @@ int add_request (char* name) {
         return -1;
     if (strlen(name) > _DEF_PATHNAME_MAX_SIZE) // filename too long
         return -2;
+
+    if (!canAdd)
+        return -3;
     
     pthread_mutex_lock(&mutex_stack);
     // DEBUG
     //fprintf(stderr, "adding %s, next: %ld, size: %ld\n", name, next, maxsize);
-    while (next >= maxsize) {
+    while (next >= maxsize && canAdd) {
         fprintf(stdout, "waiting for stack not to be full\n");
         pthread_cond_wait(&can_push, &mutex_stack);
-    
     }
-    strncpy(tasks_stack[next].filename, name, _STRINGSIZE);
-    next++;
-    pthread_cond_signal(&can_pop);
-    pthread_mutex_unlock(&mutex_stack);
-    // DEBUG
-    // fprintf(stderr, "added %s\n", name); 
-    return 0;
+    if (!canAdd) {
+        pthread_mutex_unlock(&mutex_stack);
+        return -3;
+    } else {
+        strncpy(tasks_stack[next].filename, name, _STRINGSIZE);
+        next++;
+        pthread_cond_signal(&can_pop);
+        pthread_mutex_unlock(&mutex_stack);
+        // DEBUG
+        // fprintf(stderr, "added %s\n", name); 
+        return 0;
+    }
 }
 
 /* Private function for the threads to pop from the stack

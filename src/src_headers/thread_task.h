@@ -4,6 +4,8 @@
     #include <stdlib.h>
 
     int init_fileStack (size_t qlen);
+    void close_fileStack();
+    int delete_fileStack ();
 
     int add_request(char*);
     void prototype_delete_request();
