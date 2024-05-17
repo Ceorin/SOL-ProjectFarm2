@@ -29,11 +29,14 @@ collector : $(BUILD_PATH)/collector.o
 #Header dependencies (will join the general object dependency rule below)
 #collector needs worker's interface
 $(BUILD_PATH)/collector.o : $(HEADERS)/collector.h $(HEADERS)/workers.h 
-
-$(BUILD_PATH)/main.o : $(HEADERS)/*.h
-
+#main needs every header
+$(BUILD_PATH)/main.o : $(wildcard $(HEADERS)/*.h)
+#master needs workers' interface
 $(BUILD_PATH)/master.o : $(HEADERS)/master.h $(HEADERS)/workers.h
+#workers needs the function as well
 $(BUILD_PATH)/workers.o : $(HEADERS)/workers.h $(HEADERS)/fun_task.h
+
+$(BUILD_PATH)/fun_task.o : $(HEADERS)/fun_task.h
 
 #general rule
 $(OBJECTS): $(BUILD_PATH)/%.o : $(SOURCE)/%.c $(HEADERS)/utils.h
