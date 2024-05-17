@@ -1,11 +1,13 @@
 #include "utils.h"
 #include "master.h"
 #include "worker_pool.h"
+// solo per il test (lasciata threadpool altrimenti)
+#include "thread_task.h"
 
 // NOTA - UNA MACRO POSIX CAMBIA IL COMPORTAMENTO DI GETOPT
 // usleep is deprecated thus must use nanosleep
 // are there better posix sources?
-#define _POSIX_C_SOURCE 199309L
+//#define _POSIX_C_SOURCE 199309L
 #include <time.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -13,6 +15,8 @@
 
 #include <stdlib.h>
 #include <errno.h>
+
+#include <pthread.h>
 
 void masterThread(int argc, char** argv) {
     fprintf(stdout, "Parte master in esecuzione!\n");
@@ -184,4 +188,21 @@ void masterThread(int argc, char** argv) {
         fprintf(stdout, "File?: %s\n", argv[i]);
     } */
 
+    init_fileStack(qlen);
+    // TEST DI CREAZIONE THREAD!
+    fflush(stdout);
+    pthread_t workers[10];
+    for (int i = 0; i<10; i++) {
+        test_error_isNot(0, errno = pthread_create(&(workers[i]), NULL, &worker_thread, NULL), "Creating worker thread");
+        test_error_isNot(0, errno = pthread_detach(workers[i]), "Detaching thread");
+    }
+
+    char test[20];
+    for (int i = 0; i < 100; i++) {
+        snprintf(test, 12, "%d > ciao", i);
+        int x = add_request(test);
+        fprintf(stdout, "adding %s, returns %d\n", test, x);
+    }
+
+    nanosleep(&qdelay, NULL);
 }//?

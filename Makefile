@@ -22,10 +22,10 @@ MAIN_OBJ := $(filter-out $(BUILD_PATH)/collector.o, $(OBJECTS))
 
 #Main program
 farm : $(MAIN_OBJ) collector
-	$(CC) $(CFLAGS) $(MAIN_OBJ) -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(MAIN_OBJ) -o $@
 
 collector : $(BUILD_PATH)/collector.o
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) $^ -o $@
 
 #Header dependencies (will join the general object dependency rule below)
 #collector needs worker's interface
@@ -41,7 +41,7 @@ $(BUILD_PATH)/thread_task.o : $(HEADERS)/thread_task.h $(HEADERS)/worker_pool.h
 
 #general rule
 $(OBJECTS): $(BUILD_PATH)/%.o : $(SOURCE)/%.c $(HEADERS)/utils.h
-	$(CC) $(CFLAGS) $< -c -I $(HEADERS) -o $@ 
+	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -I $(HEADERS) -o $@ 
 
 #Pre-made test generation -> sets up test folder
 #Right now the test is managed by test.sh
