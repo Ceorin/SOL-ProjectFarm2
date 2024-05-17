@@ -18,10 +18,11 @@ OBJECTS := $(patsubst $(SOURCE)/%.c, $(BUILD_PATH)/%.o, $(SOURCE_FILES))
 
 all : prepareTest farm
 
+MAIN_OBJ := $(filter-out $(BUILD_PATH)/collector.o, $(OBJECTS))
 
 #Main program
-farm : $(OBJECTS) collector
-	$(CC) $(CFLAGS) $(OBJECTS) -o $@
+farm : $(MAIN_OBJ) collector
+	$(CC) $(CFLAGS) $(MAIN_OBJ) -o $@
 
 collector : $(BUILD_PATH)/collector.o
 	$(CC) $(CFLAGS) $^ -o $@

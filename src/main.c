@@ -8,8 +8,7 @@
 #include "collector.h"
 #include "master.h"
 
-#define COLLECTOR_PATH "collector.exe"
-#define SOCKET_NAME "farm2"
+#define _DEF_SOCKET_NAME "farm2"
 
 int main(int argc, char* argv[]) {
     __pid_t collector_id;
@@ -18,11 +17,11 @@ int main(int argc, char* argv[]) {
     // (1) TODO FORK-EXEC COLLECTOR
     test_error(collector_id = fork(), -1, "Forking process");
     if (collector_id == 0) { // esegui collector
-        execl(COLLECTOR_PATH, COLLECTOR_PATH, SOCKET_NAME, NULL);
+        execl(_DEF_COLLECTOR_PATH, _DEF_COLLECTOR_PATH, _DEF_SOCKET_NAME, NULL);
         perror("Executing exec for collector");
         exit(EXIT_FAILURE);
     } else { // esegui MasterWorker
-        masterThread();
+        masterThread(argc, argv);
         // (2) TODO PIPE -> WORKERS CREATION
        // (3) TODO READING INPUTS
     }

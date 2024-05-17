@@ -1,4 +1,6 @@
 #ifndef COLLECTOR_HEADER
     #define COLLECTOR_HEADER
-    // INUTILE?
+    
+    #define _DEF_COLLECTOR_PATH "./collector"
+
 #endif

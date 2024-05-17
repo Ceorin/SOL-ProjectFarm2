@@ -1,1 +1,1 @@
-void masterThread(){}//?
+void workerThread(){}//?
