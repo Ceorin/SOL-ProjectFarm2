@@ -1,4 +1,21 @@
-#TODO
+#TODO?
 
-# Ignore extra files
+# Ignore vscode properties
 .vscode
+
+# Ignore compiled objects
+*.o
+*.obj
+
+# Ignore compiled executables
+*.exe
+*.out
+
+# Ignore specifically the project executables
+collector
+farm
+test/generafile
+
+# Ignore files used during executions in the default directory
+tmp/*
+log/*
