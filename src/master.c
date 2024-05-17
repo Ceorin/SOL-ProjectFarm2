@@ -272,7 +272,7 @@ void masterThread(int argc, char** argv) {
         int ret = add_request(test->pathname);
         fprintf(stdout, "adding %s, returns %d\n", test->pathname, ret);        
         
-        if (i%10== 0) {
+        if (i%10== 0 && delthread < 4) {
             fprintf(stderr, "requesting deletion\n");
             prototype_delete_request();
             delthread++;
