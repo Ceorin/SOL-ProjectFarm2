@@ -102,17 +102,17 @@ int prototype_get_request_with_delete (char *ref_result) {
 
     int ret_value;
     pthread_mutex_lock(&mutex_stack);
-    while (next<0 && requested_terminations==0) {
+    while (next==0 && requested_terminations==0) {
         fprintf(stdout, "waiting for stack to fill\n");
         pthread_cond_wait(&can_pop, &mutex_stack);
     } 
-    if (requested_terminations!=0) {
+    if (requested_terminations>0) {
         requested_terminations--;
         ref_result = NULL;
         ret_value = 1;
     } else {
-        strncpy(ref_result, tasks_stack[next].filename, _STRINGSIZE);
         next--;
+        strncpy(ref_result, tasks_stack[next].filename, _STRINGSIZE);
         ret_value = 0;
         pthread_cond_signal(&can_push);
     }

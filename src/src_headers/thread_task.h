@@ -9,4 +9,5 @@
     int add_request(char*);
     void prototype_delete_request();
     void* worker_thread (void*);
+    void* prototype_worker_thread(void*);
 #endif

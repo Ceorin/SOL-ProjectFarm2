@@ -191,9 +191,9 @@ void masterThread(int argc, char** argv) {
     init_fileStack(qlen);
     // TEST DI CREAZIONE THREAD!
     fflush(stdout);
-    pthread_t workers[10];
-    for (int i = 0; i<10; i++) {
-        test_error_isNot(0, errno = pthread_create(&(workers[i]), NULL, &worker_thread, NULL), "Creating worker thread");
+    pthread_t workers[5];
+    for (int i = 0; i<5; i++) {
+        test_error_isNot(0, errno = pthread_create(&(workers[i]), NULL, &prototype_worker_thread, NULL), "Creating worker thread");
         test_error_isNot(0, errno = pthread_detach(workers[i]), "Detaching thread");
     }
 
@@ -202,6 +202,10 @@ void masterThread(int argc, char** argv) {
         snprintf(test, 12, "%d > ciao", i);
         int x = add_request(test);
         fprintf(stdout, "adding %s, returns %d\n", test, x);
+        if (i%10 == 0) {
+            fprintf(stderr, "requesting deletion\n");
+            prototype_delete_request();
+        }
     }
 
     nanosleep(&qdelay, NULL);
