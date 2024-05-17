@@ -11,7 +11,7 @@
 #define _STRINGSIZE 1+_DEF_PATHNAME_MAX_SIZE
 
 // encapsulating the stack data in case I need to change it for the future
-struct  stackData {
+struct stackData {
     char filename[_STRINGSIZE];
 } typedef stackData;
 

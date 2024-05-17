@@ -192,7 +192,7 @@ void masterThread(int argc, char** argv) {
     // TEST DI CREAZIONE THREAD!
     fflush(stdout);
     pthread_t workers[5];
-    for (int i = 0; i<5; i++) {
+    for (int i = 0; i<5 ; i++) {
         test_error_isNot(0, errno = pthread_create(&(workers[i]), NULL, &prototype_worker_thread, NULL), "Creating worker thread");
         test_error_isNot(0, errno = pthread_detach(workers[i]), "Detaching thread");
     }
