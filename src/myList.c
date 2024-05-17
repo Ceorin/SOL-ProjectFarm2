@@ -437,7 +437,8 @@ unsigned int delete_List (list_t** list, void (*freeFunction)(void*) ) {
         (*list)->head = (*list)->head->next;
 
         freeFunction(deleting->item);
-        free(deleting->key);
+        if (deleting->key != NULL)
+            free(deleting->key);
         free(deleting);
         count++;
     }

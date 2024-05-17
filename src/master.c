@@ -256,7 +256,7 @@ void masterThread(int argc, char** argv) {
     }
     fprintf(stdout, "\n");
     
-    /*
+    
     init_fileStack(qlen);
     // TEST DI CREAZIONE THREAD!
     fflush(stdout);
@@ -266,18 +266,22 @@ void masterThread(int argc, char** argv) {
         test_error_isNot(0, errno = pthread_detach(workers[i]), "Detaching thread");
     }
 
-    char test[20];
-    for (int i = 0; i < 100; i++) {
-        snprintf(test, 12, "%d > ciao", i);
-        int x = add_request(test);
-        fprintf(stdout, "adding %s, returns %d\n", test, x);
+    for (int i = 0; i < maybe_files->size; i++) {
+        maybeFile *test = (maybeFile*) list_getAt(maybe_files, i, false);
+        int ret = add_request(test->pathname);
+        fprintf(stdout, "adding %s, returns %d\n", test->pathname, ret);        
+        
         if (i%10 == 0) {
             fprintf(stderr, "requesting deletion\n");
             prototype_delete_request();
         }
     }
 
-    nanosleep(&qdelay, NULL);*/
+    nanosleep(&qdelay, NULL);
+
+    // Frees used structures
+    size_t testSize = maybe_files->size;
+    test_error_isNot(testSize, delete_List(&maybe_files, &free), "Deleting file and directory list");
 
 
 }//?
