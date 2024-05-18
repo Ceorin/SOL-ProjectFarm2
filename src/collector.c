@@ -12,5 +12,6 @@ int main(int argc, char* argv[]) {
     fprintf (stdout, "Collector creato\n");
     fprintf (stdout, "\narg1: %s\n", argv[1]);
     fflush(stdout);
+    sleep(1);
     return 0;
 } //?

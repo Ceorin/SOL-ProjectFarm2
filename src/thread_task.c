@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
 #include "thread_task.h"
 #include "utils.h"
 #include "sumfun.h"
@@ -247,13 +248,21 @@ void* worker_thread(void* arg) {
 
     char filename[_STRINGSIZE];
     short check_close = 0;
+    result_value myTemp;
+    int fd;
     while (!check_close) {
         check_close = get_request(filename);
         if (check_close == 0) { // return 0, good result
             // TASK
             fprintf(stdout, "Hi, I got string %s!\n", filename);
             // YEE
-
+            fd = open(filename, O_RDONLY);
+            if (fd == -1)
+                perror("opening file in thread");
+            else {
+                myTemp = sum_fun(filename, fd);
+                fprintf(stdout, "%s : %lld\n", myTemp.name, myTemp.sumvalue);
+            }
         } else if (check_close == 1)  { // return 1, "you need to stop"
             fprintf(stdout, "Okay I'll close - %ld\n", requested_terminations);
             fflush(stdout);
