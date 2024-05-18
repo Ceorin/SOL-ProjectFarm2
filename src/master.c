@@ -1,31 +1,41 @@
-#include "utils.h"
-#include "myList.h"
-#include "master.h"
-#include "worker_pool.h"
+
 
 // NOTA - UNA MACRO POSIX CAMBIA IL COMPORTAMENTO DI GETOPT
 // usleep is deprecated thus must use nanosleep
 // are there better posix sources?
 //#define _POSIX_C_SOURCE 199309L 
 // ^ Defined with pthread
+#include <stdlib.h>
+#include <limits.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
+#include <dirent.h>
+#include <string.h>
 #include <time.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <getopt.h>
-
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
 
 #include <pthread.h>
 
+#include "utils.h"
+#include "myList.h"
+#include "master.h"
+#include "worker_pool.h"
 struct dir_or_file {
     enum {_is_D, _is_F} dor_type;
     char pathname [1+_DEF_PATHNAME_MAX_SIZE];
 } typedef maybeFile;
 
+int navigate_and_add(char*, list_t*);
+int check_regular_file (char*);
+int check_if_dir(char*);
+
+
+
 void masterThread(int argc, char** argv) {
-    fprintf(stdout, "Parte master in esecuzione!\n");
+    DEBUG_PRINT(printf("Parte master in esecuzione!\n");)
     fflush(stdout);
 
     size_t qlen = _DEF_QLEN;
@@ -81,8 +91,7 @@ void masterThread(int argc, char** argv) {
                     // if tempNum > ? upperbound?
 
                     thread_num = tempNum;
-                    // DEBUG
-                    fprintf (stdout, "%c set to %ld successfully!\n", opt, thread_num);
+                    DEBUG_PRINT(fprintf(stdout, "%c set to %ld successfully!\n", opt, thread_num);)
                 }
                 break;
             case 'q': // set qlen
@@ -119,8 +128,8 @@ void masterThread(int argc, char** argv) {
                     // if tempNum > ? upperbound?
 
                     qlen = tempNum;
-                    // DEBUG
-                    fprintf (stdout, "%c set to %ld successfully!\n", opt, qlen);
+
+                    DEBUG_PRINT(fprintf(stdout, "%c set to %ld successfully!\n", opt, qlen);)
                 }
                 break;
             case 't': // set qdelay
@@ -162,8 +171,8 @@ void masterThread(int argc, char** argv) {
 
                     qdelay.tv_sec = tempNum/1000;
                     qdelay.tv_nsec = (tempNum%1000) * 1000000;
-                    // DEBUG
-                    fprintf (stdout, "%c set to [%lds : %ldns] successfully!\n", opt, qdelay.tv_sec, qdelay.tv_nsec);
+
+                    DEBUG_PRINT(fprintf(stdout, "%c set to [%lds : %ldns] successfully!\n", opt, qdelay.tv_sec, qdelay.tv_nsec);)
                 }
                 break;
             case 'd': // check if optarg is a valid directory, then adds it to the to-do-list 
@@ -182,15 +191,14 @@ void masterThread(int argc, char** argv) {
                     test_error(NULL, wrapper = (maybeFile*) malloc(sizeof(maybeFile)), "Creating dir or file wrapper");
                     strncpy (wrapper->pathname, optarg, _DEF_PATHNAME_MAX_SIZE);
                     wrapper->dor_type = _is_D;
+                    errno = 0;
                     int ret = add_Last(NULL, wrapper, maybe_files); 
                     if (ret < 0) {
                         free(wrapper);
                         fprintf (stderr, "%d\t", ret);
                         perror("Adding a directory");
-                        errno = 0;
                     } else {  
-                        // DEBUG
-                        fprintf(stdout, "%c - dir?: %s\n", opt, optarg);
+                        DEBUG_PRINT(fprintf(stdout, "%c - dir?: %s\n", opt, optarg);)
                     }
                 }
                 break;
@@ -215,9 +223,8 @@ void masterThread(int argc, char** argv) {
                         fprintf (stderr, "%d\t", ret);
                         perror("Adding a file!");
                         errno = 0;
-                    } else {  
-                        // DEBUG
-                        fprintf(stdout, "file?: %s\n", optarg);
+                    } else {
+                        DEBUG_PRINT(fprintf(stdout, "file?: %s\n", optarg);)
                     }
                 }
                 break;
@@ -236,58 +243,150 @@ void masterThread(int argc, char** argv) {
     if (optind < argc) {
         fprintf (stderr, "Argument not recognized: %s\n", argv[optind]);
     }
-    /* Old version - posix changes getopt behaviour so that it ends on the first non-option while missing options after that.
-    for (int i = optind; i<argc; i++) { // check files validity
-        fprintf(stdout, "File?: %s\n", argv[i]);
-    } */
     
-    /* TEST if list has been created properly
-    
-    fprintf(stdout, "printing list:\n");
-    fprintf(stdout, "Size: %d\t Head:%p\t Last:%p\t Unique? %s\n", maybe_files->size, (void*) maybe_files->head, (void*) maybe_files->last, (maybe_files->unique) ? "Yes" : "No");
-    maybeFile* test;
-    int i = 0;
-    while (i < maybe_files->size) {
-        test = list_getAt(maybe_files, i, false);
-        fprintf(stdout, "Element %d -> value: %s\ttype: %s\n", i, test->pathname, (test->dor_type == _is_D) ? "Dir" : "File");
-        i++;
-    }
-    fprintf(stdout, "\n"); */
-    
-    
-    // TEST DI CREAZIONE THREAD!
-    fflush(stdout);
     int created_threads = init_worker_pool(qlen, thread_num);
     if (created_threads < thread_num) {
+        // exit failure?
         fprintf(stderr, "something went wrong, created only %d threads", created_threads);
     }
-    fprintf (stdout, "Created thread pool");
+    DEBUG_PRINT(fprintf(stdout, "Created thread pool"));
 
-    // sending test messages to threads
-    for (int i = 0; i < maybe_files->size; i++) {
-        maybeFile *test = (maybeFile*) list_getAt(maybe_files, i, false);
-        int ret = send_request_to_pool(test->pathname);
-        fprintf(stdout, "adding %s, returns %d\n", test->pathname, ret);        
+    while (maybe_files->size >0) { // sending test messages to threads
+        errno = 0;
+        maybeFile *test = (maybeFile*) list_first(maybe_files, true);
+        if (test == NULL && errno!=0)
+            perror("picking argument from list");
+        else {
+            if (test->dor_type == _is_F) {
+                if (check_regular_file(test->pathname) == 1) {
+                    int ret = send_request_to_pool(test->pathname);
+                    fprintf(stdout, "adding %s, returns %d\n", test->pathname, ret);       
+                } else 
+                    fprintf(stderr, "%s is not a valid file!\n", test->pathname); 
+            } else if (test->dor_type == _is_D) {
+                int ret = navigate_and_add(test->pathname, maybe_files);
+
+            }
+        }
+        free(test);
         
-        if (i%2 == 0) {
-            int trydelete = delete_thread();
-            if (trydelete == -2)
-                perror("NOT INITIALIZED");
-            else if (trydelete == -1)
-                fprintf(stderr, "ONLY ONE THREAD");
-            else
-                fprintf(stderr, "deleted one thread\n");
-        }
-        if (i%13 == 0) {
-            int tryadd = add_thread();
-            if (tryadd < 1)
-                fprintf (stderr, "cannot add threads\n");
-            else   
-                fprintf(stderr, "added one thread\n");
-        }
     }
     size_t testSize = maybe_files->size;
     test_error_isNot(testSize, delete_List(&maybe_files, &free), "Deleting file and directory list");
     //TODO better
     test_error_isNot(0, destroy_pool(), "Deleting threadpool");
 }//?
+
+int navigate_and_add (char* dirname, list_t* list_of_files) {
+    DEBUG_PRINT(fprintf(stdout, "%s is dir?\n", dirname);)
+    DIR* ectory = opendir(dirname); 
+    if (ectory == NULL) {
+        char errmsg[300];
+        snprintf(errmsg, 1+_DEF_PATHNAME_MAX_SIZE, "Opening dir %s", dirname);
+        perror (errmsg);
+        return -1;
+    }
+    struct dirent* current;
+    while ((errno = 0, current = readdir(ectory))!=NULL) {
+        DEBUG_PRINT(fprintf(stdout, "checking %s/%s\n", dirname, current->d_name);)
+        if (!strncmp(current->d_name, ".", 2) || !strncmp(current->d_name, "..", 3))
+            continue;
+    #ifndef DT_DIR // if DT_DIR is undefined I'll use check functions that use stat and require a path
+        char bufname[_DEF_PATHNAME_MAX_SIZE+30];
+        snprintf(bufname, 1+_DEF_PATHNAME_MAX_SIZE, "%s/%s", dirname, current->d_name);
+    #endif
+
+    #ifdef DT_DIR
+        if (current->d_type == DT_DIR) {
+    #else
+        if (check_if_dir(bufname) == 1) {
+    #endif
+            maybeFile *wrapper;
+            test_error(NULL, wrapper = (maybeFile*) malloc(sizeof(maybeFile)), "Creating dir or file wrapper");
+        #ifdef DT_DIR
+            if (snprintf(wrapper->pathname, 1+_DEF_PATHNAME_MAX_SIZE, "%s/%s", dirname, current->d_name) > 1+_DEF_PATHNAME_MAX_SIZE)
+                fprintf(stderr, "%s/%s is too long\n", dirname, current->d_name);
+        #else
+            if (snprintf(wrapper->pathname, 1+_DEF_PATHNAME_MAX_SIZE, "%s", bufname) > 1+_DEF_PATHNAME_MAX_SIZE)
+                fprintf(stderr, "%s is too long\n", bufname);
+        #endif
+            else {
+                wrapper->dor_type = _is_D;
+                errno = 0;
+                int ret = add_Last(NULL, wrapper, list_of_files); 
+                if (ret < 0) {
+                    free(wrapper);
+                    fprintf (stderr, "%d\t", ret);
+                    perror("Adding a directory");
+                } else {
+                    DEBUG_PRINT(fprintf(stdout, "From directory %s to %s, added!\n", dirname, current->d_name);)
+                }
+            }
+    #ifdef DT_REG
+        } else if (current->d_type == DT_REG || current->d_type == DT_UNKNOWN) { // would leave the unknown check to the file itself
+    #else
+        } else if (check_regular_file(bufname) == 1) {
+    #endif
+            maybeFile *wrapper;
+            test_error(NULL, wrapper = (maybeFile*) malloc(sizeof(maybeFile)), "Creating dir or file wrapper");
+        #ifdef DT_DIR
+            if (snprintf(wrapper->pathname, 1+_DEF_PATHNAME_MAX_SIZE, "%s/%s", dirname, current->d_name) > 1+_DEF_PATHNAME_MAX_SIZE) {
+                fprintf(stderr, "%s/%s is too long\n", dirname, current->d_name);
+        #else
+            if (snprintf(wrapper->pathname, 1+_DEF_PATHNAME_MAX_SIZE, "%s", bufname) > 1+_DEF_PATHNAME_MAX_SIZE) {
+                fprintf(stderr, "%s is too long\n", bufname);
+        #endif
+            } else {
+                wrapper->dor_type = _is_F;
+                errno = 0;
+                int ret = add_Last(NULL, wrapper, list_of_files); 
+                if (ret < 0) {
+                    free(wrapper);
+                    fprintf (stderr, "%d\t", ret);
+                    perror("Adding a directory");
+                } else {
+                    DEBUG_PRINT(fprintf(stdout, "From directory %s, added file %s!\n", dirname, current->d_name);)
+                }
+            }
+        }
+    }
+    if (errno!=0) {
+        char errmsg[300];
+        snprintf(errmsg, 1+_DEF_PATHNAME_MAX_SIZE, "Reading dir %s", dirname);
+        perror (errmsg);
+        return -1;
+    }
+    closedir(ectory);
+    return 0;
+}
+
+
+int check_regular_file (char* pathname) {
+    struct stat s; 
+    if (stat(pathname, &s) == -1) {
+        char errmsg[30+_DEF_PATHNAME_MAX_SIZE];
+        snprintf(errmsg, 1+_DEF_PATHNAME_MAX_SIZE, "Reading stat - file %s", pathname);
+        perror (errmsg);
+        return -1;
+    } 
+    
+    if (S_ISREG(s.st_mode))
+        return 1;
+    else
+        return 0;
+}
+
+int check_if_dir (char* dirname) {
+    struct stat s; 
+    if (stat(dirname, &s) == -1) {
+        char errmsg[_DEF_PATHNAME_MAX_SIZE+30];
+        snprintf(errmsg, 1+_DEF_PATHNAME_MAX_SIZE, "Reading stat - file %s", dirname);
+        perror (errmsg);
+        return -1;
+    }
+    
+    if (S_ISDIR(s.st_mode))
+        return 1;
+    else
+        return 0;
+}

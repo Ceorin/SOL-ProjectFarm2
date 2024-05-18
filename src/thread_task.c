@@ -42,7 +42,7 @@ int init_fileStack (size_t qlen)  {
         pthread_mutex_unlock(&mutex_stack);
         return -1;
     }
-    fprintf(stderr, "Creating stack with size of %ld\n", qlen);
+    DEBUG_PRINT(fprintf(stdout, "Creating stack with size of %ld\n", qlen);)
     maxsize = qlen;
     test_error(tasks_stack = (stackData*) malloc (sizeof(stackData)*qlen), NULL, "Initializing task stack");
 
@@ -83,12 +83,12 @@ void destroy_mutex(size_t);
 // Waits for there to be no tasks, then requests to terminate a number of threads equal to the argument and frees the stack.
 // returns -1 and fails if the queue is still open.
 int delete_fileStack (size_t thread_num) {
-    fprintf(stdout, "deleting %ld threads\n", thread_num);
+    DEBUG_PRINT(fprintf(stdout, "deleting %ld threads\n", thread_num);)
     if (canAdd)
         return -1;
     pthread_mutex_lock(&mutex_stack);
     while (next>0) {
-        fprintf(stdout, "waiting for stack to empty\n");
+        DEBUG_PRINT(fprintf(stdout, "waiting for stack to empty\n");)
         pthread_cond_wait(&can_push, &mutex_stack);
     }
     requested_terminations+=thread_num;
@@ -124,7 +124,7 @@ int add_request (char* name) {
     // DEBUG
     //fprintf(stderr, "adding %s, next: %ld, size: %ld\n", name, next, maxsize);
     while (next >= maxsize && canAdd) {
-        fprintf(stdout, "waiting for stack not to be full\n");
+        DEBUG_PRINT(fprintf(stdout, "waiting for stack not to be full\n");)
         pthread_cond_wait(&can_push, &mutex_stack);
     }
     if (!canAdd) {
@@ -141,30 +141,6 @@ int add_request (char* name) {
     }
 }
 
-/* Private function for the threads to pop from the stack
-    ref_result NEEDS to be a string of defined size, but given it's used only here we know as much.
-    probably will tell threads to exit here. (see prototype version)*/
- /* int get_request (char *ref_result) {
-    if (ref_result==NULL)
-        return -1;
-    pthread_mutex_lock(&mutex_stack);
-
-    // DEBUG
-    // fprintf(stdout, "popping from next:%ld\n", next);
-
-    while (next==0) {
-        fprintf(stdout, "waiting for stack to fill\n");
-        pthread_cond_wait(&can_pop, &mutex_stack);
-    }
-    next--;
-    strncpy(ref_result, tasks_stack[next].filename, _STRINGSIZE);
-    pthread_cond_signal(&can_push);
-    pthread_mutex_unlock(&mutex_stack);
-    // DEBUG
-    // fprintf(stdout, "popped %s\n", ref_result);
-    return 0;
-} */
-
 // Gets an item to process from the stack
 // returns 0 on success
 // returns 1 and ref_result is null, if it received a request to terminate
@@ -176,7 +152,7 @@ int get_request (char *ref_result) {
 
     pthread_mutex_lock(&mutex_stack);
     while (next==0 && requested_terminations==0) {
-        fprintf(stdout, "waiting for stack to fill\n");
+        DEBUG_PRINT(fprintf(stdout, "waiting for stack to fill\n");)
         pthread_cond_wait(&can_pop, &mutex_stack);
     } 
     if (requested_terminations>0) { // if it exits from here will free from the exit function of the thread
@@ -201,33 +177,6 @@ void delete_request () {
     pthread_mutex_unlock(&mutex_stack);
 }
 
-
-
-/* non-delete worker thread
-void* worker_thread (void* arg) {
-    // does it need arguments?
-    if (arg!=NULL)
-        free(arg);
-    
-    char filename[_STRINGSIZE] = "test";
-    int retvalue;
-    sleep(1);
-    while (1) {
-        retvalue = get_request(filename);
-        if (retvalue == 0) { // return 0, good result
-            // TASK
-            fprintf(stdout, "Hi, I got string %s!\n", filename);
-            // YEE
-
-        } else {
-            // errore
-            fprintf(stdout, "huh?\n");
-        }
-    }
-
-} */
-
-
 /* takes mutex and exits (release mutex on exit); 
 increases the count of terminated thread if the threadpool has been destroyed */
 static void count_exit (void* arg) {
@@ -249,25 +198,25 @@ void* worker_thread(void* arg) {
     char filename[_STRINGSIZE];
     short check_close = 0;
     result_value myTemp;
-    int fd;
+    FILE *inp;
     while (!check_close) {
         check_close = get_request(filename);
         if (check_close == 0) { // return 0, good result
             // TASK
-            fprintf(stdout, "Hi, I got string %s!\n", filename);
+            DEBUG_PRINT(fprintf(stdout, "Hi, thread got string %s!\n", filename);)
             // YEE
-            fd = open(filename, O_RDONLY);
-            if (fd == -1)
+            inp = fopen(filename, "r");
+            if (inp == NULL)
                 perror("opening file in thread");
             else {
-                myTemp = sum_fun(filename, fd);
-                fprintf(stdout, "%s : %lld\n", myTemp.name, myTemp.sumvalue);
+                myTemp = sum_fun_file(filename, inp);
+                fprintf(stdout,"%s : %lld\n", myTemp.name, myTemp.sumvalue);
+                fclose(inp);
             }
         } else if (check_close == 1)  { // return 1, "you need to stop"
-            fprintf(stdout, "Okay I'll close - %ld\n", requested_terminations);
-            fflush(stdout);
-        } else if (check_close == 2) {
-            // errore
+            DEBUG_PRINT(fprintf(stdout,"Thread closing, terminations?:s%ld\n", requested_terminations);)
+        } else if (check_close) {
+            // errore?
             fprintf(stdout, "huh?\n");
         }
     }

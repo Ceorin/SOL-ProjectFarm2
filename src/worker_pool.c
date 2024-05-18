@@ -72,7 +72,7 @@ int delete_thread() {
 int destroy_pool() {
     close_fileStack();
     int delete_value = delete_fileStack(current_thread_num);
-    fprintf(stderr, "%d\n", delete_value); 
+    DEBUG_PRINT(fprintf(stdout, "Threadpool delete value=%d\n", delete_value);)
     current_thread_num=0;;
     return delete_value;
 }

@@ -6,15 +6,36 @@
 
 /* function reads from a file descriptor fd ad if sent only long integers
     and returns a result_value with name equal target and value equal to 
-    Σ i*long[i], where i is the index of the i-nth long read from the descriptor    
-    */
-result_value sum_fun (char* target, int fd) {
+    Σ i*long[i], where i is the index of the i-nth long read from the descriptor  
+    DO NOTE: this uses a system call, so it's probably slower than using a file   */
+result_value sum_fun_fd (char* target, int fd) {
     result_value result;
     long long sum = 0;
     long int i = 0;
     long int buf;
     ssize_t ret;   
     while (0 < (ret = read(fd, &buf, sizeof(long int)))) {
+        sum += (buf * i);
+        i++;
+    }
+    if (ret == -1) {
+        // check errrori
+    }
+    strncpy(result.name, target, _DEF_PATHNAME_MAX_SIZE);
+    result.sumvalue = sum;
+    return result;
+}
+
+/* function reads long integers from a FILE
+    and returns a result_value with name equal target and value equal to 
+    Σ i*long[i], where i is the index of the i-nth long read from the descriptor    */
+result_value sum_fun_file (char* target, FILE* file) {
+    result_value result;
+    long long sum = 0;
+    long int i = 0;
+    long int buf;
+    ssize_t ret;   
+    while (0 < (ret = fread(&buf, sizeof(long int), 1, file))) {
         sum += (buf * i);
         i++;
     }

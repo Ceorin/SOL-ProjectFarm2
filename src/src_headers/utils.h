@@ -8,4 +8,10 @@
     #define test_error_isNot(comp, sc, msg) \
         if ((sc) != (comp) ) { perror (msg); exit(EXIT_FAILURE); }
 
+    #ifdef DEBUG
+        #define DEBUG_PRINT(msg) msg
+    #else
+        #define DEBUG_PRINT(msg) 
+    #endif 
+
 #endif

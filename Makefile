@@ -14,9 +14,12 @@ TEST_FOLDER = $(PROJECT_DIR)/test
 SOURCE_FILES := $(wildcard $(SOURCE)/*.c)
 OBJECTS := $(patsubst $(SOURCE)/%.c, $(BUILD_PATH)/%.o, $(SOURCE_FILES))
 
-.PHONY: all prepareTest clean cleanTmp cleanBuild cleanTest test1
+.PHONY: all prepareTest clean cleanTmp cleanBuild cleanTest test1 debug
 
 all : prepareTest farm
+
+debug :	CPPFLAGS += -D DEBUG
+debug : all
 
 MAIN_OBJ := $(filter-out $(BUILD_PATH)/collector.o, $(OBJECTS))
 
@@ -27,7 +30,7 @@ farm : $(MAIN_OBJ) collector
 collector : $(BUILD_PATH)/collector.o $(BUILD_PATH)/myList.o
 	$(CC) $(CFLAGS) $(CPPFLAGS) $^ -o $@
 
-#Header dependencies (will join the general object dependency rule below)
+#Header dependencies (will join the general object dependency rule below)src/master.c
 #collector needs worker's interface
 $(BUILD_PATH)/collector.o : $(HEADERS)/collector.h $(HEADERS)/sumfun.h 
 #main needs every header
