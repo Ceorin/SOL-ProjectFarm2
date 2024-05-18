@@ -2,8 +2,6 @@
 #include "myList.h"
 #include "master.h"
 #include "worker_pool.h"
-// solo per il test (lasciata threadpool altrimenti)
-#include "thread_task.h"
 
 // NOTA - UNA MACRO POSIX CAMBIA IL COMPORTAMENTO DI GETOPT
 // usleep is deprecated thus must use nanosleep
@@ -243,7 +241,7 @@ void masterThread(int argc, char** argv) {
         fprintf(stdout, "File?: %s\n", argv[i]);
     } */
     
-    // TEST if list has been created properly
+    /* TEST if list has been created properly
     
     fprintf(stdout, "printing list:\n");
     fprintf(stdout, "Size: %d\t Head:%p\t Last:%p\t Unique? %s\n", maybe_files->size, (void*) maybe_files->head, (void*) maybe_files->last, (maybe_files->unique) ? "Yes" : "No");
@@ -254,42 +252,43 @@ void masterThread(int argc, char** argv) {
         fprintf(stdout, "Element %d -> value: %s\ttype: %s\n", i, test->pathname, (test->dor_type == _is_D) ? "Dir" : "File");
         i++;
     }
-    fprintf(stdout, "\n");
+    fprintf(stdout, "\n"); */
     
     
-    init_fileStack(qlen);
     // TEST DI CREAZIONE THREAD!
     fflush(stdout);
-    pthread_t workers[5];
-    for (int i = 0; i<5 ; i++) {
-        test_error_isNot(0, errno = pthread_create(&(workers[i]), NULL, &prototype_worker_thread, NULL), "Creating worker thread");
-        test_error_isNot(0, errno = pthread_detach(workers[i]), "Detaching thread");
+    int created_threads = init_worker_pool(qlen, thread_num);
+    if (created_threads < thread_num) {
+        fprintf(stderr, "something went wrong, created only %d threads", created_threads);
     }
+    fprintf (stdout, "Created thread pool");
 
-    int delthread = 0;
+    // sending test messages to threads
     for (int i = 0; i < maybe_files->size; i++) {
         maybeFile *test = (maybeFile*) list_getAt(maybe_files, i, false);
-        int ret = add_request(test->pathname);
+        int ret = send_request_to_pool(test->pathname);
         fprintf(stdout, "adding %s, returns %d\n", test->pathname, ret);        
         
-        if (i%10== 0 && delthread < 4) {
-            fprintf(stderr, "requesting deletion\n");
-            prototype_delete_request();
-            delthread++;
+        if (i%10 == 0) {
+            int trydelete = delete_thread();
+            if (trydelete == -2)
+                perror("NOT INITIALIZED");
+            else if (trydelete == -1)
+                fprintf(stderr, "ONLY ONE THREAD");
+            else
+                fprintf(stderr, "deleted one thread\n");
+        }
+        if (i%13 == 0) {
+            int tryadd = add_thread();
+            if (tryadd < 1)
+                fprintf (stderr, "cannot add threads\n");
+            else   
+                fprintf(stderr, "added one thread\n");
         }
     }
-
-    for (; delthread < 5; delthread++) {
-            fprintf(stderr, "requesting deletion\n");
-            prototype_delete_request();
-    }
-    nanosleep(&qdelay, NULL);
-
-    // Frees used structures
     size_t testSize = maybe_files->size;
     test_error_isNot(testSize, delete_List(&maybe_files, &free), "Deleting file and directory list");
     //TODO better
-    close_fileStack();
-    delete_fileStack ();    
-
+    sleep(1);
+    test_error_isNot(0, destroy_pool(), "Deleting threadpool");
 }//?

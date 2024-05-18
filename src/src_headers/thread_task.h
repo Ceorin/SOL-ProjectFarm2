@@ -4,11 +4,12 @@
     #include <stdlib.h>
 
     int init_fileStack (size_t qlen);
+    int is_open();
     void close_fileStack();
-    int delete_fileStack ();
+    int delete_fileStack (size_t);
 
     int add_request(char*);
-    void prototype_delete_request();
+    void delete_request();
     void* worker_thread (void*);
-    void* prototype_worker_thread(void*);
+    // void* prototype_worker_thread(void*);
 #endif
