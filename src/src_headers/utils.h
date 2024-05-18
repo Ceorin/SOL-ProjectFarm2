@@ -1,5 +1,5 @@
-#ifndef UTILITIES
-    #define UTILITIES
+#ifndef MY_UTILITIES
+    #define MY_UTILITIES
     #include <stdio.h>
     #define _DEF_PATHNAME_MAX_SIZE 255
     // Exit macros

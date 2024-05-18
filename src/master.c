@@ -269,7 +269,7 @@ void masterThread(int argc, char** argv) {
         int ret = send_request_to_pool(test->pathname);
         fprintf(stdout, "adding %s, returns %d\n", test->pathname, ret);        
         
-        if (i%10 == 0) {
+        if (i%2 == 0) {
             int trydelete = delete_thread();
             if (trydelete == -2)
                 perror("NOT INITIALIZED");
@@ -289,6 +289,5 @@ void masterThread(int argc, char** argv) {
     size_t testSize = maybe_files->size;
     test_error_isNot(testSize, delete_List(&maybe_files, &free), "Deleting file and directory list");
     //TODO better
-    sleep(1);
     test_error_isNot(0, destroy_pool(), "Deleting threadpool");
 }//?

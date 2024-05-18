@@ -7,7 +7,7 @@
 #include <errno.h>
 #include "thread_task.h"
 #include "utils.h"
-#include <sched.h>
+#include "sumfun.h"
 
 // outside it'll be defined as the amount of character; stringsize is to quickly account for the termination char.
 #define _STRINGSIZE 1+_DEF_PATHNAME_MAX_SIZE
