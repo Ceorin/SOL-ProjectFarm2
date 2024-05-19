@@ -24,6 +24,7 @@
 #include "master.h"
 #include "worker_pool.h"
 #include "signal_handlers_master.h"
+
 struct dir_or_file {
     enum {_is_D, _is_F} dor_type;
     char pathname [1+_DEF_PATHNAME_MAX_SIZE];
@@ -38,20 +39,18 @@ void masterThread(int argc, char** argv) {
     DEBUG_PRINT(printf("Parte master in esecuzione!\n");)
     DEBUG_PRINT(fflush(stdout);)
 
-    
+    DEBUG_PRINT(pid_t me = getpid();) // will use for debugging prints later
     // signal handling
-    DEBUG_PRINT(pid_t me = getpid(); kill(me, SIGUSR1);)
-    DEBUG_PRINT(printf("Sent usr1, ignored?\n");)
     if (handle_signals_master()) {
         perror("handling master");
     } else {
         DEBUG_PRINT(printf("Signal handler installed?\n");)
-        DEBUG_PRINT(pid_t me = getpid(); kill(me, SIGUSR1);)
+        DEBUG_PRINT(kill(me, SIGUSR1);)
         DEBUG_PRINT(printf("Sent usr1!\n");)
         DEBUG_PRINT(kill(me, SIGPIPE);)
         DEBUG_PRINT(printf("Ignored pipe?\n");)
-        DEBUG_PRINT(kill(me, SIGUSR1); kill(me, SIGHUP); kill(me, SIGUSR1); kill(me, SIGUSR2); kill(me, SIGUSR1); kill(me, SIGINT);)
-        DEBUG_PRINT(fprintf(stdout, "Is this 3 : 1?\t %d : %d\n", th_num_modify, terminate_th_pool);)
+        // DEBUG_PRINT(kill(me, SIGUSR1); kill(me, SIGHUP); kill(me, SIGUSR1); kill(me, SIGUSR2); kill(me, SIGUSR1); kill(me, SIGINT);)
+        // DEBUG_PRINT(fprintf(stdout, "Is this 3 : 1?\t %d : %d\n", th_num_modify, terminate_th_pool);)
     }
 
     size_t qlen = _DEF_QLEN;
@@ -268,6 +267,30 @@ void masterThread(int argc, char** argv) {
     DEBUG_PRINT(fprintf(stdout, "Created thread pool"));
 
     while (maybe_files->size >0) { // sending test messages to threads
+        DEBUG_PRINT(fprintf(stdout, "signal vars: %d - %d\n", th_num_modify, terminate_th_pool);)
+        if (terminate_th_pool == 1)
+            break;
+        int reqnum;
+        if ((reqnum = th_num_modify) != 0) {
+            th_num_modify -= reqnum; // Processed X amount of requests. if a USR signal got received between the if-guard and this command, it'll be processed in the next cycle
+            if (reqnum > 0) { // adding reqnum thread (if possible)
+                for (int i = 0; i < reqnum; i++) {
+                    if (add_thread() <0) {
+                        DEBUG_PRINT(fprintf(stdout, "Cannot add a thread\n");)
+                    } else {
+                        DEBUG_PRINT(fprintf(stdout,"Thread added successfully!\n");)
+                    }
+                }
+            } else { // removing reqnnum threads (if possible)
+                for (int i = 0; i > reqnum; i--) {
+                    if (delete_thread() <0) {
+                        DEBUG_PRINT(fprintf(stdout, "Cannot add a thread\n");)
+                    } else {
+                        DEBUG_PRINT(fprintf(stdout, "Thread removed successfully!\n");)
+                    }
+                }
+            }
+        }
         errno = 0;
         maybeFile *test = (maybeFile*) list_first(maybe_files, true);
         if (test == NULL && errno!=0)
@@ -281,16 +304,19 @@ void masterThread(int argc, char** argv) {
                     fprintf(stderr, "%s is not a valid file!\n", test->pathname); 
             } else if (test->dor_type == _is_D) {
                 int ret = navigate_and_add(test->pathname, maybe_files);
-
+                DEBUG_PRINT(kill(me, SIGUSR2);kill(me, SIGUSR2);kill(me, SIGUSR2);kill(me, SIGUSR2);)
             }
         }
         free(test);
         
     }
+
+    // whether I exited from finishing the list of items or by terminating the pool, I need to free the memory.
+    test_error_isNot(0, destroy_pool(), "Deleting threadpool");
+            
     size_t testSize = maybe_files->size;
     test_error_isNot(testSize, delete_List(&maybe_files, &free), "Deleting file and directory list");
     //TODO better
-    test_error_isNot(0, destroy_pool(), "Deleting threadpool");
 }//?
 
 int navigate_and_add (char* dirname, list_t* list_of_files) {

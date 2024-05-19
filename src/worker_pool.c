@@ -1,7 +1,7 @@
 #include "worker_pool.h"
 #include "thread_task.h"
 #include "utils.h"
-#include "signal_handlers_master.h"
+#include "signal_utils.h"
 // #include "myList.h" not needed if detached threads work
 #include <stdlib.h>
 #include <pthread.h>

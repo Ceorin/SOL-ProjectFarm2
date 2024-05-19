@@ -8,7 +8,7 @@
 #include "utils.h"
 #include "collector.h"
 #include "master.h"
-#include "signal_handlers_master.h"
+#include "signal_utils.h"
 
 int main(int argc, char* argv[]) {
     __pid_t collector_id;

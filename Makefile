@@ -27,22 +27,22 @@ MAIN_OBJ := $(filter-out $(BUILD_PATH)/collector.o, $(OBJECTS))
 farm : $(MAIN_OBJ) collector
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(MAIN_OBJ) -o $@
 
-collector : $(BUILD_PATH)/collector.o $(BUILD_PATH)/myList.o
+collector : $(BUILD_PATH)/collector.o $(BUILD_PATH)/myList.o $(BUILD_PATH)/signal_utils.o
 	$(CC) $(CFLAGS) $(CPPFLAGS) $^ -o $@
 
 #Header dependencies (will join the general object dependency rule below)src/master.c
 #collector needs worker's interface
-$(BUILD_PATH)/collector.o : $(HEADERS)/collector.h $(HEADERS)/sumfun.h 
+$(BUILD_PATH)/collector.o : $(HEADERS)/collector.h $(HEADERS)/sumfun.h $(HEADERS)/signal_utils.h
 #main needs every header
 $(BUILD_PATH)/main.o : $(wildcard $(HEADERS)/*.h) $(wildcard$(UTILS)/*.h)
 #master needs workers' interface and list
 $(BUILD_PATH)/master.o : $(HEADERS)/master.h $(HEADERS)/worker_pool.h $(HEADERS)/myList.h $(HEADERS)/signal_handlers_master.h
 #the thread pool needs the function of course
-$(BUILD_PATH)/worker_pool.o : $(HEADERS)/worker_pool.h $(HEADERS)/thread_task.h $(HEADERS)/myList.h
+$(BUILD_PATH)/worker_pool.o : $(HEADERS)/worker_pool.h $(HEADERS)/thread_task.h $(HEADERS)/myList.h $(HEADERS)/signal_utils.h
 #the thread function will interact with requests to the threadpool?
 $(BUILD_PATH)/thread_task.o : $(HEADERS)/thread_task.h $(HEADERS)/sumfun.h $(HEADERS)/collector.h	
 
-$(BUILD_PATH)/signal_handlers_master.o : $(HEADERS)/signal_handlers_master.h
+$(BUILD_PATH)/signal_handlers_master.o : $(HEADERS)/signal_handlers_master.h $(HEADERS)/signal_utils.h
 
 $(BUILD_PATH)/sumfun.o : $(HEADERS)/sumfun.h
 
