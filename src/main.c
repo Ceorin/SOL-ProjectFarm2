@@ -12,22 +12,9 @@
 
 int main(int argc, char* argv[]) {
     __pid_t collector_id;
-    // masking SIGPIPE for master and collector
 
-    struct sigaction sa_ign; 
+    // masking signals for fork
     sigset_t curmask = mask_all();
-    memset(&sa_ign, 0, sizeof(sa_ign));
-
-    sa_ign.sa_handler = SIG_IGN;
-    test_error(sigaction(SIGPIPE, &sa_ign, NULL), -1, "Setting pipe to ignore");
-    test_error(sigaction(SIGHUP, &sa_ign, NULL), -1, "Setting SIGHUP to ignore");
-    test_error(sigaction(SIGINT, &sa_ign, NULL), -1, "Setting SIGINT to ignore");
-    test_error(sigaction(SIGQUIT, &sa_ign, NULL), -1, "Setting SIGQUIT to ignore");
-    test_error(sigaction(SIGTERM, &sa_ign, NULL), -1, "Setting SIGTERM to ignore");
-    test_error(sigaction(SIGUSR1, &sa_ign, NULL), -1, "Setting SIGUSR1 to ignore");
-    test_error(sigaction(SIGUSR2, &sa_ign, NULL), -1, "Setting SIGUSR2 to ignore");
-    
-
     
     test_error(collector_id = fork(), -1, "Forking process");
     if (collector_id == 0) { // esegui collector

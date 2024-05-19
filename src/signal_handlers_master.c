@@ -44,6 +44,9 @@ static void handle_interrupt (int signum) {
 
     handlers.sa_handler = handler_USR2;
     test_error(sigaction(SIGUSR2, &handlers, NULL), -1, "Setting SIGUSR2");
+
+    handlers.sa_handler = SIG_IGN;
+    test_error(sigaction(SIGPIPE, &handlers, NULL), -1, "Setting SIGPIPE");
     
 
     return_mask (previous_mask);

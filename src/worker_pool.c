@@ -1,6 +1,7 @@
 #include "worker_pool.h"
 #include "thread_task.h"
 #include "utils.h"
+#include "signal_handlers_master.h"
 // #include "myList.h" not needed if detached threads work
 #include <stdlib.h>
 #include <pthread.h>
@@ -28,11 +29,15 @@ int init_worker_pool(size_t queue_len, size_t thread_num) {
         return -1;
     current_thread_num = 0;
     pthread_t temp_Thread;
+    
+    // funneling all signals to master
+    sigset_t master_mask = mask_all();
     for (long int i = 0; i < thread_num; i++) {
         test_error_isNot(0, errno = pthread_create(&(temp_Thread), NULL, &worker_thread, NULL), "Creating worker thread");
         test_error_isNot(0, errno = pthread_detach(temp_Thread), "Detaching thread");
         current_thread_num++;
     }
+    return_mask(master_mask);
     // if every thread has been created correctly, ends state with current_thread_num = thread_num.
     return current_thread_num;
 }
@@ -50,8 +55,11 @@ int add_thread() {
     if (can_create<0)
         return can_create;  
     pthread_t temp_Thread;
+    // funneling all signals to master
+    sigset_t master_mask = mask_all();
     test_error_isNot(0, errno = pthread_create(&(temp_Thread), NULL, &worker_thread, NULL), "Creating worker thread");
     test_error_isNot(0, errno = pthread_detach(temp_Thread), "Detaching thread");
+    return_mask(master_mask);
     current_thread_num++;
     return 0;
 }
