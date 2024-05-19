@@ -1,8 +1,9 @@
-
 #include <pthread.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -28,6 +29,7 @@ unsigned long requested_terminations;
 __sig_atomic_t canAdd; // will only be modified by close_fileStack, and only to 0.
 short freed;
 
+unsigned long waiting_deletion;
 
 static pthread_mutex_t mutex_stack = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t can_push = PTHREAD_COND_INITIALIZER;
@@ -49,6 +51,7 @@ int init_fileStack (size_t qlen)  {
 
     next = 0;
     requested_terminations = 0;
+    waiting_deletion = 0;
     canAdd = 1;
     freed = 0;
     pthread_mutex_unlock(&mutex_stack);
@@ -90,7 +93,10 @@ int delete_fileStack (size_t thread_num) {
     pthread_mutex_lock(&mutex_stack);
     while (next>0) {
         DEBUG_PRINT(fprintf(stdout, "waiting for stack to empty\n");)
-        pthread_cond_wait(&can_push, &mutex_stack);
+        struct timespec badExit;
+        test_error(-1, clock_gettime(CLOCK_REALTIME, &badExit), "Creating safety clock");
+        badExit.tv_sec +=5;
+        test_error(ETIMEDOUT, pthread_cond_timedwait(&can_push, &mutex_stack, &badExit), "Destroy pool failed; exiting"); // TODO - TIMEDWAIT! What if noone is working but the stack is still there?
     }
     requested_terminations+=thread_num;
     free(tasks_stack);
@@ -124,7 +130,7 @@ int add_request (char* name) {
     pthread_mutex_lock(&mutex_stack);
     // DEBUG
     //fprintf(stderr, "adding %s, next: %ld, size: %ld\n", name, next, maxsize);
-    while (next >= maxsize && canAdd) {
+    while (next >= maxsize && canAdd) { // TODO must be interruptable by closing signal: it's the same thread that does this!
         DEBUG_PRINT(fprintf(stdout, "waiting for stack not to be full\n");)
         pthread_cond_wait(&can_push, &mutex_stack);
     }
@@ -180,27 +186,53 @@ void delete_request () {
 
 /* takes mutex and exits (release mutex on exit); 
 increases the count of terminated thread if the threadpool has been destroyed */
-static void count_exit (void* arg) {
-    if (arg!= NULL)
-        free(arg);
+static void count_exit (void* socket_fd) {
     if (freed) {
-        if (requested_terminations)
+        if (requested_terminations) {
+            // TODO send "finished" message through the connection.
             pthread_cond_signal(&can_remove);
+        }
     }
  //   fprintf(stdout, "%ld exit\n", requested_terminations);
     requested_terminations--;
     pthread_mutex_unlock(&mutex_stack); // should always have mutex while exiting with this
+    if (socket_fd!=NULL && *(int*)socket_fd!=-1)
+        close(*(int*)socket_fd);
+}
+
+void wait_delete() {
+    pthread_mutex_lock(&mutex_stack);
+    while (requested_terminations==0) {
+        DEBUG_PRINT(fprintf(stdout, "waiting to die\n");)
+        pthread_cond_wait(&can_pop, &mutex_stack);
+    } 
+    // exits with lock and everything, cleanup function will release
 }
 
 void* worker_thread(void* arg) { 
     // does it need arguments?
-    pthread_cleanup_push(&count_exit, arg);
-    char socket[] = _DEF_SOCKET_NAME;
-    DEBUG_PRINT(fprintf(stdout, "Thread started with socketname:%s\n", socket);)
+    int socket_fd=-1; //def value
+    pthread_cleanup_push(&count_exit, (void*)&socket_fd);
+    
     char filename[_STRINGSIZE];
     short check_close = 0;
     result_value myTemp;
     FILE *inp;
+
+    //  connecting to collector socket
+    struct sockaddr_un collector_address;
+    strncpy(collector_address.sun_path, _DEF_SOCKET_NAME, UNIX_SOCKPATH_MAX); // TODO - dynamic name for socket?
+    collector_address.sun_family = AF_UNIX;
+
+    socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (connect(socket_fd, (struct sockaddr*) &collector_address, sizeof(collector_address)) == -1) {
+        DEBUG_PRINT(fprintf(stdout, "Thread connection failed\n");)
+        check_close = -5;
+        wait_delete(); 
+    } else {
+        DEBUG_PRINT(fprintf(stdout, "Thread connection successfull! Can send to %d\n", socket_fd));
+    }
+
     while (!check_close) {
         check_close = get_request(filename);
         if (check_close == 0) { // return 0, good result

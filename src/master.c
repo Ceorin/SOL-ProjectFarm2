@@ -1,5 +1,3 @@
-
-
 // NOTA - UNA MACRO POSIX CAMBIA IL COMPORTAMENTO DI GETOPT
 // usleep is deprecated thus must use nanosleep
 // are there better posix sources?
@@ -299,12 +297,12 @@ void masterThread(int argc, char** argv) {
             if (test->dor_type == _is_F) {
                 if (check_regular_file(test->pathname) == 1) {
                     int ret = send_request_to_pool(test->pathname);
-                    fprintf(stdout, "adding %s, returns %d\n", test->pathname, ret);       
+                    DEBUG_PRINT((stdout, "adding %s, returns %d\n", test->pathname, ret));       
                 } else 
                     fprintf(stderr, "%s is not a valid file!\n", test->pathname); 
             } else if (test->dor_type == _is_D) {
                 int ret = navigate_and_add(test->pathname, maybe_files);
-                DEBUG_PRINT(kill(me, SIGUSR2);kill(me, SIGUSR2);kill(me, SIGUSR2);kill(me, SIGUSR2);)
+                // DEBUG_PRINT(kill(me, SIGUSR2);kill(me, SIGUSR2);kill(me, SIGUSR2);kill(me, SIGUSR2);)
             }
         }
         free(test);

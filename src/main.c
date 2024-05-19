@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
         return_mask(curmask);
         DEBUG_PRINT(kill(collector_id, SIGPIPE));
         DEBUG_PRINT(kill(collector_id, SIGINT));
-        DEBUG_PRINT("Is collector dead or did it go on?\n");
+        DEBUG_PRINT(printf("Is collector dead or did it go on?\n");)
         masterThread(argc, argv);
         // (2) TODO PIPE -> WORKERS CREATION
        // (3) TODO READING INPUTS

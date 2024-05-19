@@ -14,7 +14,7 @@
     #else
         #define DEBUG_PRINT(msg) 
     #endif 
-
     
+    #define UNIX_SOCKPATH_MAX 108
 
 #endif
