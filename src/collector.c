@@ -5,6 +5,8 @@
 #include <errno.h>
 
 int main(int argc, char* argv[]) {
+    DEBUG_PRINT(sleep(1));
+    
     if (argc != 2) {
         fprintf(stderr, "use as %s <socket name>\n", argv[0]);
         exit(EXIT_FAILURE);

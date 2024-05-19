@@ -9,6 +9,7 @@
 #include "thread_task.h"
 #include "utils.h"
 #include "sumfun.h"
+#include "collector.h"
 
 // outside it'll be defined as the amount of character; stringsize is to quickly account for the termination char.
 #define _STRINGSIZE 1+_DEF_PATHNAME_MAX_SIZE
@@ -194,7 +195,8 @@ static void count_exit (void* arg) {
 void* worker_thread(void* arg) { 
     // does it need arguments?
     pthread_cleanup_push(&count_exit, arg);
-
+    char socket[] = _DEF_SOCKET_NAME;
+    DEBUG_PRINT(fprintf(stdout, "Thread started with socketname:%s\n", socket);)
     char filename[_STRINGSIZE];
     short check_close = 0;
     result_value myTemp;

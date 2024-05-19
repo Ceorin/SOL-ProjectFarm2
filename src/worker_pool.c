@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <errno.h>
 
+
 /* INITIAL TEST:
     THREADS WILL BE DETACHED
     current_thread_num will HAVE TO be consistent with the requests to destroy or create threads! */
@@ -47,7 +48,7 @@ int send_request_to_pool(char* filename) {
 int add_thread() {
     int can_create = is_open();
     if (can_create<0)
-        return can_create;
+        return can_create;  
     pthread_t temp_Thread;
     test_error_isNot(0, errno = pthread_create(&(temp_Thread), NULL, &worker_thread, NULL), "Creating worker thread");
     test_error_isNot(0, errno = pthread_detach(temp_Thread), "Detaching thread");

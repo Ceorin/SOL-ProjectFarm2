@@ -23,6 +23,7 @@
 #include "myList.h"
 #include "master.h"
 #include "worker_pool.h"
+#include "signal_handlers_master.h"
 struct dir_or_file {
     enum {_is_D, _is_F} dor_type;
     char pathname [1+_DEF_PATHNAME_MAX_SIZE];
@@ -33,10 +34,25 @@ int check_regular_file (char*);
 int check_if_dir(char*);
 
 
-
 void masterThread(int argc, char** argv) {
     DEBUG_PRINT(printf("Parte master in esecuzione!\n");)
-    fflush(stdout);
+    DEBUG_PRINT(fflush(stdout);)
+
+    
+    // signal handling
+    DEBUG_PRINT(pid_t me = getpid(); kill(me, SIGUSR1);)
+    DEBUG_PRINT(printf("Sent usr1, ignored?\n");)
+    if (handle_signals_master()) {
+        perror("handling master");
+    } else {
+        DEBUG_PRINT(printf("Signal handler installed?\n");)
+        DEBUG_PRINT(pid_t me = getpid(); kill(me, SIGUSR1);)
+        DEBUG_PRINT(printf("Sent usr1!\n");)
+        DEBUG_PRINT(kill(me, SIGPIPE);)
+        DEBUG_PRINT(printf("Ignored pipe?\n");)
+        DEBUG_PRINT(kill(me, SIGUSR1); kill(me, SIGHUP); kill(me, SIGUSR1); kill(me, SIGUSR2); kill(me, SIGUSR1); kill(me, SIGINT);)
+        DEBUG_PRINT(fprintf(stdout, "Is this 3 : 1?\t %d : %d\n", th_num_modify, terminate_th_pool);)
+    }
 
     size_t qlen = _DEF_QLEN;
     size_t thread_num = _DEF_NTHREAD;

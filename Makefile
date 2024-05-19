@@ -36,11 +36,13 @@ $(BUILD_PATH)/collector.o : $(HEADERS)/collector.h $(HEADERS)/sumfun.h
 #main needs every header
 $(BUILD_PATH)/main.o : $(wildcard $(HEADERS)/*.h) $(wildcard$(UTILS)/*.h)
 #master needs workers' interface and list
-$(BUILD_PATH)/master.o : $(HEADERS)/master.h $(HEADERS)/worker_pool.h $(HEADERS)/myList.h
+$(BUILD_PATH)/master.o : $(HEADERS)/master.h $(HEADERS)/worker_pool.h $(HEADERS)/myList.h $(HEADERS)/signal_handlers_master.h
 #the thread pool needs the function of course
 $(BUILD_PATH)/worker_pool.o : $(HEADERS)/worker_pool.h $(HEADERS)/thread_task.h $(HEADERS)/myList.h
 #the thread function will interact with requests to the threadpool?
-$(BUILD_PATH)/thread_task.o : $(HEADERS)/thread_task.h $(HEADERS)/sumfun.h
+$(BUILD_PATH)/thread_task.o : $(HEADERS)/thread_task.h $(HEADERS)/sumfun.h $(HEADERS)/collector.h	
+
+$(BUILD_PATH)/signal_handlers_master.o : $(HEADERS)/signal_handlers_master.h
 
 $(BUILD_PATH)/sumfun.o : $(HEADERS)/sumfun.h
 
@@ -88,4 +90,4 @@ test1 :
 
 debugtest :
 	echo $(SOURCE_FILES)
-	echo $(OBJECTS)
+	echo $(OBJECTS)	

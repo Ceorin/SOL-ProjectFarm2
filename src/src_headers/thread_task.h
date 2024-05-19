@@ -3,6 +3,8 @@
 
     #include <stdlib.h>
 
+    #define _DEF_SOCKET_NAME
+
     int init_fileStack (size_t qlen);
     int is_open();
     void close_fileStack();
