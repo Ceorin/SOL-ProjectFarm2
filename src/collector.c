@@ -153,9 +153,19 @@ int main(int argc, char* argv[]) {
                             perror("Accepting clients");
                     } else {
                         fprintf(stdout, "Accepted client on fd: %d\n", client_fd);
-                        if (num_FDs == pollsize) {
+                        int can_add = 1;
+                        if (num_FDs+1 == pollsize) {
                             fprintf(stderr, "Poll is full! Create a bigger one\n");
-                        } else {
+                            pFDs = (struct pollfd*) realloc (pFDs, (pollsize+_START_SIZE_POLL) * sizeof(struct pollfd));
+                            if (errno == ENOMEM) {
+                                perror("Reallocating poll structure");
+                                can_add = 0;
+                            } else { // set new member of the structure to 0
+                                memset(pFDs+_START_SIZE_POLL, 0, _START_SIZE_POLL);
+                                pollsize += _START_SIZE_POLL;
+                            }
+                        } 
+                        if (can_add) {
                             pFDs[num_FDs].fd = client_fd;
                             pFDs[num_FDs].events = POLLIN;
                             num_FDs++;
@@ -227,48 +237,23 @@ int main(int argc, char* argv[]) {
                 printf("Close requested but can't yet\n");
             }
         }
+
+        if ((num_FDs > 1) && (pollsize > _START_SIZE_POLL) && (pollsize/4 > num_FDs)) {
+            pollsize/=2;
+            pFDs = (struct pollfd*) realloc (pFDs, pollsize * sizeof(struct pollfd));
+            if (errno == ENOMEM) {
+                perror("Reducing poll structure size");
+            }
+        }
     }
 
     printf("end connection test\n");
     unlink(my_address.sun_path);
+
+    close(listen_sck);
     
 }
-/*
-        client_fd = accept(listen_sck, NULL, 0);
-        if (client_fd == -1) {
-            fprintf(stderr, "client %d\t", client_fd);
-            perror("accept");
-            go = 0;
-        } else {
-            int client_go = 1;
-            do {
-                printf("Client%d wants to write\n", client_fd);
-                char buf[300];
-                int last_read, bytes_read = 0, bytes_to_read = sizeof(result_value);
-                while (bytes_to_read > 0) { 
-                    last_read = read(client_fd, &(buf[bytes_read]), bytes_to_read);
-                    if (last_read < 0)
-                        perror("reading");
-                    bytes_read += last_read;
-                    bytes_to_read -= last_read;
-                }
-                if (bytes_to_read != 0)
-                    perror("finishing read");
-                
-                result_value test;
-                strncpy(test.name, buf, sizeof(test.name));
-                memcpy(&(test.sumvalue), buf+sizeof(test.name), sizeof(test.sumvalue));
 
-                printf("client said: %s : %lld\n", test.name, test.sumvalue); 
-                if (!strncmp(test.name, "../", sizeof("./"))) {
-                    client_go = go = 0;
-                } else if (!strncmp(test.name, "./", sizeof("./"))) {
-                    client_go = 0;
-                }
-                printf("Client has more? %d\n", client_go);
-            } while (client_go);
-        }
-    }*/
 
 void collector_set_signals(int mask_is_set)  {
     sigset_t mask_q;

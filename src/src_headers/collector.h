@@ -6,7 +6,7 @@
     
     /* wille poll an array, the number of requests should be mostly constant after the beginning, 
         so reallocating should not happen too often */
-    #define _START_SIZE_POLL 32 
+    #define _START_SIZE_POLL 32 // Currently linear increments
     #define _COLLECTOR_TIMEOUT 5000 // milliseconds
 
     /* These names should **never** be processed as a file by masterworker, 

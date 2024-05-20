@@ -53,5 +53,7 @@ int main (int argc, char* argv[]) {
         if (bytes_to_write != 0) 
             perror("finishing write");
     }
+
+    close(my_socket);
     return 0;
 }
