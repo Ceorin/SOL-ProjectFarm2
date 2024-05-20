@@ -1,6 +1,7 @@
 #include <time.h>
 #include "collector_print.h"
 #include "sumfun.h"
+#include "utils.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <errno.h>
@@ -15,10 +16,10 @@ node_t* order_list_first(node_t*, node_t*);
 void order_print_result_list(list_t* l) {
     //lock
     pthread_mutex_lock(&mutex_last);
-    printf("%d\t", l->size);
+    DEBUG_PRINT(printf("%d\t", l->size));
     node_t* tempLast = l->last;
     unsigned int lines_num = l->size;
-    printf("%d\t", lines_num);
+    DEBUG_PRINT(printf("%d\t", lines_num));
     pthread_mutex_unlock(&mutex_last); 
     // unlock here?
     l->head = order_list_first(l->head, tempLast); // do I need to generate intermediate result?
@@ -31,27 +32,32 @@ void order_print_result_list(list_t* l) {
     }
 }
 
+void last_print (void* arg) {
+    order_print_result_list((list_t*) arg);
+}
+
 void* printingthread (void* arg) {
     list_t * mylist = (list_t*) arg;
+    pthread_cleanup_push(last_print, arg); // will print one last time when canceled
     struct timespec print_time, rem_time;
     print_time.tv_nsec = 0;
     print_time.tv_sec = 1;
     int last_ret = 0;
-    while (print) {
+    while (1) {
         if (last_ret == 0) {
-            fprintf(stdout, "normal sleep");
+            DEBUG_PRINT( fprintf(stdout, "normal sleep");)
             last_ret = nanosleep(&print_time, &rem_time);
             if (last_ret != 0 && errno != EINTR) {
                 break;
             }
         } else {
-            fprintf(stdout, "interrupted?\n");
+            DEBUG_PRINT (fprintf(stdout, "interrupted?\n");)
             last_ret = nanosleep(&rem_time, &rem_time);
         }
-        fprintf(stdout, " * * * PRINT - list_t_size = %d * * *!\n", mylist->size);
+        DEBUG_PRINT(fprintf(stdout, " * * * PRINT - list_t_size = %d * * *!\n", mylist->size));
         order_print_result_list(mylist);
     }
-    fprintf(stdout, "Printingthread exited\n");
+    pthread_cleanup_pop(1);
     return 0;
 }
 

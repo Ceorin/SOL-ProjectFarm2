@@ -37,7 +37,8 @@ int main(int argc, char* argv[]) {
 
     pthread_t printing_thread;
     test_error_isNot(0, errno = pthread_create(&(printing_thread), NULL, &printingthread, (void*)result_list), "Creating printing thread");
-    test_error_isNot(0, errno = pthread_detach(printing_thread), "Detaching printing thread");
+    test_error_isNot(0, errno = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL), "setting thread to be cancelable")
+    
     // create server socket
     /*
     int fd_server; // listening socket
@@ -66,7 +67,7 @@ int main(int argc, char* argv[]) {
             perror("Adding mockup!");
             errno = 0;
         } else {
-            DEBUG_PRINT(fprintf(stdout, "file?: %s\n", optarg);)
+            DEBUG_PRINT(fprintf(stdout, "file?: %s\n", wrapper->name);)
         }
         if (i%8 == 0) {
             sleep(1);
@@ -78,13 +79,18 @@ int main(int argc, char* argv[]) {
         }
     }
     pthread_mutex_lock(&mutex_last);
-    int ret = add_Last(NULL, &"ciao", result_list);
+    char* temp = (char*) malloc (sizeof (char)*10);
+    strncpy(temp, "end", sizeof(char)*10);
+    int ret = add_Last(NULL, temp, result_list);
     pthread_mutex_unlock(&mutex_last);
 
 
     sleep(3);
     print = 0;
     sleep(2);
+
+    test_error_isNot(0, pthread_cancel(printing_thread), "Canceling thread");
+    test_error_isNot(0, pthread_join(printing_thread, NULL), "Joining back printing thread");
     size_t check_list_size = result_list->size;
     test_error_isNot(check_list_size, delete_List(&result_list, &free), "Freeing up list space");
     DEBUG_PRINT(fprintf(stdout, "Collector concluso\n"));

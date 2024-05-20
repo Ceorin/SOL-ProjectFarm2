@@ -2,7 +2,7 @@
 
 ## TODO
 
- - [ ] everything collector
+ - [ ] collector
  - - [ ] socket communication => poll
  - - [x] timed print
  - - [x] sorting list algorithm or sorted list structure
@@ -10,6 +10,7 @@
 
 ## In Progress
  - [ ] finishing worker threads tasks (need to do socket communication)
+ - [/] no memory leak?
 
 ## Done but could clean up
  - [x] masterThread?
@@ -21,3 +22,5 @@
  - [x] main?
  - [x] thread pool?
  - [x] sum function
+ - [x] collector result management
+ - [x] collector printing thread
