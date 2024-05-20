@@ -103,15 +103,128 @@ int main(int argc, char* argv[]) {
     unlink(my_address.sun_path);
     errno = 0;// errno ignored, bind will trigger the same errors
 
-    listen_sck = socket(AF_UNIX, SOCK_STREAM, 0);
+    listen_sck = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
     perror("created collector socket");
     bind (listen_sck, (struct sockaddr*) &my_address, sizeof(my_address));
     perror("bound collector socket");
     listen(listen_sck, SOMAXCONN);
     perror("listening started");
 
+    // creating poll
+    struct pollfd* pFDs;
+    int pollsize = _START_SIZE_POLL; // size of the poll array. Will dynamically expand eventually
+    int num_FDs = 1; // numbere of FD to poll at the beginning; index of the first "free" poll-fd
+    int poll_res = 0; // number of FD with events
+    int tmp_size = 0; // num_FDs to iterate on
+
+    test_error(NULL, pFDs = (struct pollfd*) calloc(pollsize, sizeof(struct pollfd)), "Allocating poll structure" );
+    // memset(pFDs, 0, sizeof(pFDs)); not needed, done by calloc
+
+    pFDs[0].fd = listen_sck;
+    pFDs[0].events = POLLIN;
+
     int go = 1;
-    do {
+    while (go) {
+        sleep(1);   
+        fprintf(stdout, "Waiting on poll\n");
+        test_error(-1, poll_res = poll(pFDs, num_FDs, 5000), "Poll failed");
+        if (poll_res == 0){
+            fprintf(stdout, "Timed out!\n");
+            break;
+        }
+
+        tmp_size = num_FDs;
+        for (int i = 0; i<tmp_size; i++) { // checking polliin results
+            if (pFDs[i].revents == 0)
+                continue; // nothing to do
+            
+            if (!(pFDs[i].revents & POLLIN)) { // error - idk what to do!
+                fprintf(stderr, "Idk what this is: [fd:%d - rq:%d]\n", pFDs[i].fd, pFDs[i].revents);
+            }
+
+            if (pFDs[i].fd == listen_sck) { // ready to accept new connections
+                fprintf(stdout, "***Listen socket reading***\n");
+                do {
+                    client_fd = accept(listen_sck, NULL, 0);
+                    if (client_fd <0) {
+                        if (errno == (EWOULDBLOCK | EAGAIN)) // no read to do
+                            errno = 0;
+                        else 
+                            perror("Accepting clients");
+                    } else {
+                        fprintf(stdout, "Accepted client on fd: %d\n", client_fd);
+                        if (num_FDs == pollsize) {
+                            fprintf(stderr, "Poll is full! Create a bigger one\n");
+                        } else {
+                            pFDs[num_FDs].fd = client_fd;
+                            pFDs[num_FDs].events = POLLIN;
+                            num_FDs++;
+                        }
+                    }
+                } while (client_fd >= 0);
+            } else { // a connection wants to write something
+                printf("Client%d wants to write\n", pFDs[i].fd);
+                char buf[300];
+                int last_read, bytes_read = 0, bytes_to_read = sizeof(result_value);
+                while (bytes_to_read > 0) { 
+                    last_read = read(pFDs[i].fd, &(buf[bytes_read]), bytes_to_read);
+                    if (last_read < 0)
+                        perror("reading");
+                    bytes_read += last_read;
+                    bytes_to_read -= last_read;
+                }
+                if (bytes_to_read != 0)
+                    perror("finishing read");
+                
+                result_value test;
+                strncpy(test.name, buf, sizeof(test.name));
+                memcpy(&(test.sumvalue), buf+sizeof(test.name), sizeof(test.sumvalue));
+                printf("client said: %s : %lld\n", test.name, test.sumvalue); 
+
+                if (!strncmp(test.name, "../", sizeof("./"))) {
+                    pFDs[i].fd = -1;
+                    num_FDs--;
+                    go = 0;
+                } else if (!strncmp(test.name, "./", sizeof("./"))) {
+                    pFDs[i].fd = -1; // I don't want to write anymore anyway
+                    num_FDs--;
+                }  
+            }
+
+        }
+
+        // debug
+        fprintf(stdout,  "FD inside now:\n");
+        for (int i = 0; i<num_FDs; i++) {
+            printf("%d\t", pFDs[i].fd);
+        }
+
+        // removing closed FD 
+        for (int i = 0; i< num_FDs; i++) {
+            if (pFDs[i].fd == -1) {
+                //fd is closed
+                for (int j = i; j < num_FDs; j++) {
+                    pFDs[j].fd = pFDs[j+1].fd;
+                    pFDs[j].events = pFDs[j+1].events;
+                }
+                i--;
+                num_FDs--;
+            }
+        }
+
+        // debug
+        fprintf(stdout,  "FD inside after removal:\n");
+        for (int i = 0; i<num_FDs; i++) {
+            printf("%d\t", pFDs[i].fd);
+        }
+        fflush(stdout);
+    }
+
+    printf("end connection test\n");
+    unlink(my_address.sun_path);
+    
+}
+/*
         client_fd = accept(listen_sck, NULL, 0);
         if (client_fd == -1) {
             fprintf(stderr, "client %d\t", client_fd);
@@ -146,12 +259,7 @@ int main(int argc, char* argv[]) {
                 printf("Client has more? %d\n", client_go);
             } while (client_go);
         }
-    } while (go);
-
-    printf("end connection test\n");
-    unlink(my_address.sun_path);
-    
-}
+    }*/
 
 void collector_set_signals(int mask_is_set)  {
     sigset_t mask_q;

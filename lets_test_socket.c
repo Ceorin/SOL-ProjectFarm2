@@ -25,9 +25,12 @@ int main (int argc, char* argv[]) {
         }
     }
 
-    for (int i = 1; i < argc; i++) {
+    for (int i = 1; i <= argc; i++) {
         result_value temp;
-        strncpy(temp.name, argv[i], sizeof(temp.name));
+        if (i<argc) 
+            strncpy(temp.name, argv[i], sizeof(temp.name));
+        else 
+            strncpy(temp.name, "./", sizeof(temp.name));
         temp.sumvalue = 100*i;
 
         char buf[300];
