@@ -2,13 +2,15 @@
 
 ## TODO
 
- - [ ] collector
- - - [ ] socket communication => poll
- - - [x] timed print
- - - [x] sorting list algorithm or sorted list structure
  - [ ] timed insert for MasterWorker
+ - [ ] better exit for thread pool deletion
 
 ## In Progress
+ - [ ] collector
+ - - [x] working poll
+ - - [ ] socket communication (only done with mockups)
+ - - [x] timed print
+ - - [x] sorting list algorithm or sorted list structure
  - [ ] finishing worker threads tasks (need to do socket communication)
  - [x] no memory leak?
 

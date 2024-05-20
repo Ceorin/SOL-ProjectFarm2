@@ -206,11 +206,11 @@ static void count_exit (void* socket_fd) {
     //   fprintf(stdout, "%ld exit\n", requested_terminations);
     requested_terminations--;
     pthread_mutex_unlock(&mutex_stack); // should always have mutex while exiting with this
-    if (socket_fd!=NULL && *(int*)socket_fd!=-1)
-        close(*(int*)socket_fd);
+    if (socket_fd!=NULL && *((int*) socket_fd)!=-1)
+        close(*((int*) socket_fd));
 }
 
-void wait_delete() {
+void wait_delete() { // TODO BETTER
     pthread_mutex_lock(&mutex_stack);
     while (requested_terminations==0) {
         DEBUG_PRINT(fprintf(stdout, "waiting to die\n");)
@@ -230,86 +230,94 @@ void* worker_thread(void* arg) {
     result_value myTemp;
     FILE *inp;
     struct sockaddr_un sa;
-    strncpy(sa.sun_path, "test_socket.sck", UNIX_SOCKPATH_MAX);
+    strncpy(sa.sun_path, _DEF_SOCKET_NAME, UNIX_SOCKPATH_MAX);
     sa.sun_family = AF_UNIX;
 
     socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    perror ("Created socket");
     while (connect (socket_fd, (struct sockaddr *) &sa, sizeof(sa)) == -1) {
         if (errno = ENOENT) {
-            fprintf(stderr, "Socket %s not found", sa.sun_path);
+            fprintf(stderr, "Socket not found");
             sleep(1);
         } else {
-            perror("Conencting to server");
+            perror("Connecting to server");
             check_close = 1;
+            break;
         }
     }
-    if (check_close) {
-        wait_delete();
-    }
+/*
+    if (check_close == 1) {
+        wait_delete()
+    }*/
 
     while (!check_close) {
         check_close = get_request(filename);
         if (check_close == 0) { // return 0, good result
-            // TASK
+            // filename taken?
             DEBUG_PRINT(fprintf(stdout, "Hi, thread got string %s!\n", filename);)
             inp = fopen(filename, "r");
-            if (inp == NULL)
+            if (inp == NULL) // should not get here! MasterWorker betrayed us!
                 perror("opening file in thread");
-            else {
+            else { // can do the task
                 myTemp = sum_fun_file(filename, inp);
-                fprintf(stdout,"THREAD: %s : %lld\n", myTemp.name, myTemp.sumvalue);
-                fclose(inp);
+                DEBUG_PRINT(fprintf(stdout,"THREAD: %s : %lld\n", myTemp.name, myTemp.sumvalue);)
 
-                write (socket_fd, &myTemp, sizeof(myTemp));
-                perror("Thread writing to socket");
-            }
+                char buf[300];
+                strncpy(buf, myTemp.name, sizeof(myTemp.name));
+                memcpy(buf+sizeof(myTemp.name), &(myTemp.sumvalue), sizeof(myTemp.sumvalue));
+
+                int last_write, bytes_written = 0, bytes_to_write = sizeof(myTemp);
+                while (bytes_to_write > 0) {
+                    last_write = write (socket_fd, buf+bytes_written, bytes_to_write);
+
+                    if (last_write <0) {
+                        perror ("THREAD Writing");
+                    }
+                    bytes_written+= last_write;
+                    bytes_to_write -= last_write;
+                }
+                if (bytes_to_write != 0) {
+                    perror ("THREAD write not finished properly");
+                }
+                // consumed inp properly
+                fclose (inp);
+            } 
+
         } else if (check_close == 1)  { // return 1, "you need to stop"
             DEBUG_PRINT(fprintf(stdout,"Thread closing, terminations?:s%ld\n", requested_terminations);)
-        } else if (check_close) {
+
+            if (freed)
+                strncpy(myTemp.name, _LAST_TERMINATION_NAME, sizeof(myTemp.name));
+            else
+                strncpy(myTemp.name, _TERMINATION_RESULT_NAME, sizeof(myTemp.name));            
+            myTemp.sumvalue = 0;
+
+            char buf[300];
+            strncpy(buf, myTemp.name, sizeof(myTemp.name));
+            memcpy(buf+sizeof(myTemp.name), &(myTemp.sumvalue), sizeof(myTemp.sumvalue));
+
+            int last_write, bytes_written = 0, bytes_to_write = sizeof(myTemp);
+            while (bytes_to_write > 0) {
+                last_write = write (socket_fd, buf+bytes_written, bytes_to_write);
+
+                if (last_write <0) {
+                    perror ("THREAD Writing");
+                }
+                bytes_written+= last_write;
+                bytes_to_write -= last_write;
+            }
+            if (bytes_to_write != 0) {
+                perror ("THREAD write not finished properly");
+            }
+
+            close(socket_fd);
+            socket_fd = -1;
+        } else {
             // errore?
-            fprintf(stdout, "huh?\n");
+            fprintf(stderr, "huh?\n");
         }
     }
-
-//    fprintf (stdout, "Thread exited with status %d\n", check_close);
+    
+    DEBUG_PRINT(fprintf (stdout, "Thread exited with status %d\n", check_close);)
     pthread_cleanup_pop(1);
     return 0;
 }
-
-/*
-void* worker_thread(void* arg) { 
-    // does it need arguments?
-    int socket_fd=-1; //def value
-    pthread_cleanup_push(&count_exit, (void*)&socket_fd);
-    char filename[_STRINGSIZE];
-    short check_close = 0;
-    result_value myTemp;
-    FILE *inp;
-
-
-    while (!check_close) {
-        check_close = get_request(filename);
-        if (check_close == 0) { // return 0, good result
-            // TASK
-            DEBUG_PRINT(fprintf(stdout, "Hi, thread got string %s!\n", filename);)
-            inp = fopen(filename, "r");
-            if (inp == NULL)
-                perror("opening file in thread");
-            else {
-                myTemp = sum_fun_file(filename, inp);
-                DEBUG_PRINT(fprintf(stdout,"THREAD: %s : %lld\n", myTemp.name, myTemp.sumvalue);)
-                fclose(inp);
-            } 
-        } else if (check_close == 1)  { // return 1, "you need to stop"
-            DEBUG_PRINT(fprintf(stdout,"Thread closing, terminations?:s%ld\n", requested_terminations);)
-        } else if (check_close) {
-            // errore?
-            fprintf(stdout, "huh?\n");
-        }
-    }
-
-//    fprintf (stdout, "Thread exited with status %d\n", check_close);
-    pthread_cleanup_pop(1);
-    return 0;
-} */

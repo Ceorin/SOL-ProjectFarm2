@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
 
     int listen_sck, client_fd;
     struct sockaddr_un my_address;
-    strncpy(my_address.sun_path, "test_socket.sck", UNIX_SOCKPATH_MAX);
+    strncpy(my_address.sun_path, _DEF_SOCKET_NAME, UNIX_SOCKPATH_MAX);
     my_address.sun_family = AF_UNIX;
 
     unlink(my_address.sun_path);
