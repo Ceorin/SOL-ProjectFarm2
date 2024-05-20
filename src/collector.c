@@ -127,7 +127,8 @@ int main(int argc, char* argv[]) {
         }
     } while (go);
 
-        printf("end connection test\n");
+    printf("end connection test\n");
+    unlink(my_address.sun_path);
     
 }
 

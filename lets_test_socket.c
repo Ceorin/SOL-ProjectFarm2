@@ -11,7 +11,7 @@
 int main (int argc, char* argv[]) {
     int my_socket;
     struct sockaddr_un sa;
-    strncpy(sa.sun_path, SOCKNAME, UNIX_PATH_MAX);
+    strncpy(sa.sun_path, "test_socket.sck", UNIX_PATH_MAX);
     sa.sun_family = AF_UNIX;
 
     my_socket = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -20,13 +20,13 @@ int main (int argc, char* argv[]) {
             fprintf(stderr, "Socket not found");
             sleep(1);
         } else {
-            perror("Conencting to server");
+            perror("Connecting to server");
             return -1;
         }
     }
 
     result_value buf;
-    strncpy(buf.name, argv[1], 256);
+    strncpy(buf.name, argv[1], 15);
     buf.sumvalue = 100;
 
     write (my_socket, &buf, sizeof(buf));

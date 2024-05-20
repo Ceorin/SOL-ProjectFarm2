@@ -215,12 +215,69 @@ void wait_delete() {
     while (requested_terminations==0) {
         DEBUG_PRINT(fprintf(stdout, "waiting to die\n");)
         pthread_cond_wait(&can_pop, &mutex_stack);
-    } 
+    }
+    requested_terminations++; // caught the request for someone else but terminates on its own
     pthread_cond_signal(&can_push);
     // exits with lock and everything, cleanup function will release
 }
 
+void* worker_thread(void* arg) { 
+    // does it need arguments?
+    int socket_fd=-1; //def value
+    pthread_cleanup_push(&count_exit, (void*)&socket_fd);
+    char filename[_STRINGSIZE];
+    short check_close = 0;
+    result_value myTemp;
+    FILE *inp;
+    struct sockaddr_un sa;
+    strncpy(sa.sun_path, "test_socket.sck", UNIX_SOCKPATH_MAX);
+    sa.sun_family = AF_UNIX;
 
+    socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    perror ("Created socket");
+    while (connect (socket_fd, (struct sockaddr *) &sa, sizeof(sa)) == -1) {
+        if (errno = ENOENT) {
+            fprintf(stderr, "Socket %s not found", sa.sun_path);
+            sleep(1);
+        } else {
+            perror("Conencting to server");
+            check_close = 1;
+        }
+    }
+    if (check_close) {
+        wait_delete();
+    }
+
+    while (!check_close) {
+        check_close = get_request(filename);
+        if (check_close == 0) { // return 0, good result
+            // TASK
+            DEBUG_PRINT(fprintf(stdout, "Hi, thread got string %s!\n", filename);)
+            inp = fopen(filename, "r");
+            if (inp == NULL)
+                perror("opening file in thread");
+            else {
+                myTemp = sum_fun_file(filename, inp);
+                fprintf(stdout,"THREAD: %s : %lld\n", myTemp.name, myTemp.sumvalue);
+                fclose(inp);
+
+                write (socket_fd, &myTemp, sizeof(myTemp));
+                perror("Thread writing to socket");
+            }
+        } else if (check_close == 1)  { // return 1, "you need to stop"
+            DEBUG_PRINT(fprintf(stdout,"Thread closing, terminations?:s%ld\n", requested_terminations);)
+        } else if (check_close) {
+            // errore?
+            fprintf(stdout, "huh?\n");
+        }
+    }
+
+//    fprintf (stdout, "Thread exited with status %d\n", check_close);
+    pthread_cleanup_pop(1);
+    return 0;
+}
+
+/*
 void* worker_thread(void* arg) { 
     // does it need arguments?
     int socket_fd=-1; //def value
@@ -255,4 +312,4 @@ void* worker_thread(void* arg) {
 //    fprintf (stdout, "Thread exited with status %d\n", check_close);
     pthread_cleanup_pop(1);
     return 0;
-}
+} */
