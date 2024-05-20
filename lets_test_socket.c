@@ -26,6 +26,7 @@ int main (int argc, char* argv[]) {
     }
 
     for (int i = 1; i <= argc; i++) {
+        sleep(1);
         result_value temp;
         if (i<argc) 
             strncpy(temp.name, argv[i], sizeof(temp.name));

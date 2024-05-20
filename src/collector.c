@@ -123,7 +123,7 @@ int main(int argc, char* argv[]) {
     pFDs[0].fd = listen_sck;
     pFDs[0].events = POLLIN;
 
-    int go = 1;
+    int go = 1, close_requested = 0;
     while (go) {
         sleep(1);   
         fprintf(stdout, "Waiting on poll\n");
@@ -181,10 +181,10 @@ int main(int argc, char* argv[]) {
                 memcpy(&(test.sumvalue), buf+sizeof(test.name), sizeof(test.sumvalue));
                 printf("client said: %s : %lld\n", test.name, test.sumvalue); 
 
-                if (!strncmp(test.name, "../", sizeof("./"))) {
+                if (!strncmp(test.name, "../", sizeof("../"))) {
                     pFDs[i].fd = -1;
                     num_FDs--;
-                    go = 0;
+                    close_requested = 1;
                 } else if (!strncmp(test.name, "./", sizeof("./"))) {
                     pFDs[i].fd = -1; // I don't want to write anymore anyway
                     num_FDs--;
@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i< num_FDs; i++) {
             if (pFDs[i].fd == -1) {
                 //fd is closed
-                for (int j = i; j < num_FDs; j++) {
+                for (int j = i; j < num_FDs; j++) { // move every fd from position [i] to position [i-1]
                     pFDs[j].fd = pFDs[j+1].fd;
                     pFDs[j].events = pFDs[j+1].events;
                 }
@@ -218,6 +218,15 @@ int main(int argc, char* argv[]) {
             printf("%d\t", pFDs[i].fd);
         }
         fflush(stdout);
+        
+        
+        if (close_requested) {
+            if (num_FDs == 1)
+                go = 0;
+            else {
+                printf("Close requested but can't yet\n");
+            }
+        }
     }
 
     printf("end connection test\n");
