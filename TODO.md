@@ -10,7 +10,7 @@
 
 ## In Progress
  - [ ] finishing worker threads tasks (need to do socket communication)
- - [o] no memory leak?
+ - [x] no memory leak?
 
 ## Done but could clean up
  - [x] masterThread?
