@@ -137,11 +137,13 @@ int main(int argc, char* argv[]) {
                 strncpy(wrapper->name, buf, sizeof(wrapper->name));
                 memcpy(&(wrapper->sumvalue), buf+sizeof(wrapper->name), sizeof(wrapper->sumvalue));
                 DEBUG_PRINT (printf("client said: %s : %lld\n", wrapper->name, wrapper->sumvalue);) 
-                if (!strncmp(wrapper->name, "../", sizeof("../"))) {
+                if (!strncmp(wrapper->name, _LAST_TERMINATION_NAME, sizeof(_LAST_TERMINATION_NAME))) {
+                    free(wrapper);
                     pFDs[i].fd = -1;
                     num_FDs--;
                     close_requested = 1;
-                } else if (!strncmp(wrapper->name, "./", sizeof("./"))) {
+                } else if (!strncmp(wrapper->name, _TERMINATION_RESULT_NAME, sizeof(_TERMINATION_RESULT_NAME))) {
+                    free(wrapper);
                     pFDs[i].fd = -1; // I don't want to write anymore anyway
                     num_FDs--;
                 } else {
@@ -205,8 +207,13 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    free(pFDs);
+
+    result_value* fake_end;
+    test_error(NULL, fake_end = (result_value*) malloc(sizeof(result_value)), "Puttign an end to result_list data");
+    strncpy(fake_end->name, _LAST_TERMINATION_NAME, sizeof(fake_end->name));
+    fake_end->sumvalue = 0;
     pthread_mutex_lock(&mutex_last);
-    char* fake_end = malloc(sizeof(char));
     int ret = add_Last(NULL, fake_end, result_list);
     if (ret < 0) {
         free(fake_end);
@@ -215,13 +222,15 @@ int main(int argc, char* argv[]) {
     }
     pthread_mutex_unlock(&mutex_last);
     // fine test lista
-
     test_error_isNot(0, pthread_cancel(printing_thread), "Canceling thread");
     test_error_isNot(0, pthread_join(printing_thread, NULL), "Joining back printing thread");
+    
+    // free list after printing
     size_t check_list_size = result_list->size;
     test_error_isNot(check_list_size, delete_List(&result_list, &free), "Freeing up list space");
     DEBUG_PRINT(fprintf(stdout, "Collector list test concluso\n"));
 
+    pthread_mutex_destroy(&mutex_last);
 
     DEBUG_PRINT( printf("end collector\n");)
     unlink(my_address.sun_path);

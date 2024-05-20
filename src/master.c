@@ -53,7 +53,7 @@ void masterThread(int argc, char** argv) {
 
     size_t qlen = _DEF_QLEN;
     size_t thread_num = _DEF_NTHREAD;
-    struct timespec qdelay;
+    unsigned int qdelay = _DEF_DELAY;
 
     errno = 0;
     list_t *maybe_files = empty_List(false); // FALSE = it's not a unique set
@@ -182,10 +182,9 @@ void masterThread(int argc, char** argv) {
                         tempNum = MAX_DELAY;
                     }
 
-                    qdelay.tv_sec = tempNum/1000;
-                    qdelay.tv_nsec = (tempNum%1000) * 1000000;
+                    qdelay = tempNum;
 
-                    DEBUG_PRINT(fprintf(stdout, "%c set to [%lds : %ldns] successfully!\n", opt, qdelay.tv_sec, qdelay.tv_nsec);)
+                    DEBUG_PRINT(fprintf(stdout, "%c set to %d ms successfully!\n", opt, qdelay);)
                 }
                 break;
             case 'd': // check if optarg is a valid directory, then adds it to the to-do-list 
@@ -263,7 +262,12 @@ void masterThread(int argc, char** argv) {
         fprintf(stderr, "something went wrong, created only %d threads", created_threads);
     }
     DEBUG_PRINT(fprintf(stdout, "Created thread pool"));
-
+    
+    // delay
+    struct timespec delay_std, rem_time;
+    delay_std.tv_sec = qdelay/1000;
+    delay_std.tv_nsec = (qdelay%1000)*1000000;
+    int nanosleep_return = 0;
     while (maybe_files->size >0) { // sending test messages to threads
         DEBUG_PRINT(fprintf(stdout, "signal vars: %d - %d\n", th_num_modify, terminate_th_pool);)
         if (terminate_th_pool == 1)
@@ -294,6 +298,22 @@ void masterThread(int argc, char** argv) {
         if (test == NULL && errno!=0)
             perror("picking argument from list");
         else {
+            if (nanosleep_return == 0) {
+                nanosleep_return = nanosleep(&delay_std, &rem_time);
+                if (nanosleep_return == -1) {
+                    if (errno == EINTR)
+                        errno=0;
+                }
+            } else {
+                nanosleep_return = nanosleep(&rem_time, &rem_time);
+                if (nanosleep_return == -1) {
+                    if (errno == EINTR)
+                        errno=0;
+                }
+            }
+            if (nanosleep_return!=0)
+                continue;
+                
             if (test->dor_type == _is_F) {
                 if (check_regular_file(test->pathname) == 1) {
                     int ret = send_request_to_pool(test->pathname);

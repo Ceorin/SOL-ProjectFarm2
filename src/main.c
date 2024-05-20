@@ -32,7 +32,11 @@ int main(int argc, char* argv[]) {
        // (3) TODO READING INPUTS
     }
     // Finito di leggere i suoi file e fatte le sue cose, attende la fine dei thread e di collector
-    waitpid(collector_id, NULL, 0   );
+    int coll_status;
+    collector_id = waitpid(collector_id, &coll_status, 0);
+    if (WIFEXITED(coll_status)) {
+        DEBUG_PRINT( fprintf(stderr, "Stato collector:%d\n", WEXITSTATUS(coll_status));)
+    }
     // gestione del risultato di collector
     return 0;
 }
