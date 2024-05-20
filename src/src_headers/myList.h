@@ -1,6 +1,13 @@
 #ifndef MY_LIST_HEADER
 #define MY_LIST_HEADER
-    typedef struct node node_t;
+
+    /* HAD to open the interface to sort outside 
+    (didn't want to create a generic sort yet, I need a specific one)*/
+    typedef struct node {
+      struct node* next;
+      char* key;
+      void* item;
+    } node_t;
 
     #include <stdbool.h>
 

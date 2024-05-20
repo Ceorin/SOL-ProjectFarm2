@@ -22,17 +22,18 @@ debug :	CPPFLAGS += -D DEBUG
 debug : all
 
 MAIN_OBJ := $(filter-out $(BUILD_PATH)/collector.o, $(OBJECTS))
+MAIN_OBJ := $(filter-out $(BUILD_PATH)/collector_print.o, $(MAIN_OBJ))
 
 #Main program
 farm : $(MAIN_OBJ) collector
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(MAIN_OBJ) -o $@
 
-collector : $(BUILD_PATH)/collector.o $(BUILD_PATH)/myList.o $(BUILD_PATH)/signal_utils.o
+collector : $(BUILD_PATH)/collector.o $(BUILD_PATH)/myList.o $(BUILD_PATH)/signal_utils.o $(BUILD_PATH)/collector_print.o
 	$(CC) $(CFLAGS) $(CPPFLAGS) $^ -o $@
 
 #Header dependencies (will join the general object dependency rule below)src/master.c
 #collector needs worker's interface
-$(BUILD_PATH)/collector.o : $(HEADERS)/collector.h $(HEADERS)/sumfun.h $(HEADERS)/signal_utils.h
+$(BUILD_PATH)/collector.o : $(HEADERS)/collector.h $(HEADERS)/sumfun.h $(HEADERS)/signal_utils.h $(HEADERS)/collector_print.h
 #main needs every header
 $(BUILD_PATH)/main.o : $(wildcard $(HEADERS)/*.h) $(wildcard$(UTILS)/*.h)
 #master needs workers' interface and list
@@ -47,6 +48,8 @@ $(BUILD_PATH)/signal_handlers_master.o : $(HEADERS)/signal_handlers_master.h $(H
 $(BUILD_PATH)/sumfun.o : $(HEADERS)/sumfun.h
 
 $(BUILD_PATH)/myList.o : $(HEADERS)/myList.h
+
+$(BUILD_PATH)/collector_print.o : $(HEADERS)/collector_print.h $(HEADERS)/sumfun.h $(HEADERS)/myList.h
 
 #general rule
 $(OBJECTS): $(BUILD_PATH)/%.o : $(SOURCE)/%.c $(HEADERS)/utils.h

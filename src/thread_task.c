@@ -96,7 +96,17 @@ int delete_fileStack (size_t thread_num) {
         struct timespec badExit;
         test_error(-1, clock_gettime(CLOCK_REALTIME, &badExit), "Creating safety clock");
         badExit.tv_sec +=5;
-        test_error(ETIMEDOUT, pthread_cond_timedwait(&can_push, &mutex_stack, &badExit), "Destroy pool failed; exiting"); // TODO - TIMEDWAIT! What if noone is working but the stack is still there?
+        if (ETIMEDOUT == pthread_cond_timedwait(&can_push, &mutex_stack, &badExit)) {
+            // TODO - TIMEDWAIT! What if noone is working but the stack is still there?
+            DEBUG_PRINT(perror("destroy_filestack:"));
+            free(tasks_stack);   
+            pthread_cond_destroy(&can_remove);
+            pthread_cond_destroy(&can_pop);
+            pthread_cond_destroy(&can_push);
+            pthread_mutex_destroy(&mutex_stack);
+            return -5;
+        }
+        DEBUG_PRINT(perror("timedwait?"));
     }
     requested_terminations+=thread_num;
     free(tasks_stack);
@@ -193,7 +203,7 @@ static void count_exit (void* socket_fd) {
             pthread_cond_signal(&can_remove);
         }
     }
- //   fprintf(stdout, "%ld exit\n", requested_terminations);
+    //   fprintf(stdout, "%ld exit\n", requested_terminations);
     requested_terminations--;
     pthread_mutex_unlock(&mutex_stack); // should always have mutex while exiting with this
     if (socket_fd!=NULL && *(int*)socket_fd!=-1)
@@ -206,47 +216,34 @@ void wait_delete() {
         DEBUG_PRINT(fprintf(stdout, "waiting to die\n");)
         pthread_cond_wait(&can_pop, &mutex_stack);
     } 
+    pthread_cond_signal(&can_push);
     // exits with lock and everything, cleanup function will release
 }
+
 
 void* worker_thread(void* arg) { 
     // does it need arguments?
     int socket_fd=-1; //def value
     pthread_cleanup_push(&count_exit, (void*)&socket_fd);
-    
     char filename[_STRINGSIZE];
     short check_close = 0;
     result_value myTemp;
     FILE *inp;
 
-    //  connecting to collector socket
-    struct sockaddr_un collector_address;
-    strncpy(collector_address.sun_path, _DEF_SOCKET_NAME, UNIX_SOCKPATH_MAX); // TODO - dynamic name for socket?
-    collector_address.sun_family = AF_UNIX;
-
-    socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (connect(socket_fd, (struct sockaddr*) &collector_address, sizeof(collector_address)) == -1) {
-        DEBUG_PRINT(fprintf(stdout, "Thread connection failed\n");)
-        check_close = -5;
-        wait_delete(); 
-    } else {
-        DEBUG_PRINT(fprintf(stdout, "Thread connection successfull! Can send to %d\n", socket_fd));
-    }
 
     while (!check_close) {
         check_close = get_request(filename);
         if (check_close == 0) { // return 0, good result
             // TASK
             DEBUG_PRINT(fprintf(stdout, "Hi, thread got string %s!\n", filename);)
-            // YEE
             inp = fopen(filename, "r");
             if (inp == NULL)
                 perror("opening file in thread");
             else {
                 myTemp = sum_fun_file(filename, inp);
-                fprintf(stdout,"%s : %lld\n", myTemp.name, myTemp.sumvalue);
+                DEBUG_PRINT(fprintf(stdout,"THREAD: %s : %lld\n", myTemp.name, myTemp.sumvalue);)
                 fclose(inp);
-            }
+            } 
         } else if (check_close == 1)  { // return 1, "you need to stop"
             DEBUG_PRINT(fprintf(stdout,"Thread closing, terminations?:s%ld\n", requested_terminations);)
         } else if (check_close) {

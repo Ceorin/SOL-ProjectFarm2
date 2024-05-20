@@ -16,11 +16,11 @@
      handle (for example the case of adding a duplicate key into an unique list).         
      
     P.S. A main to test exists at the bottom of the file, although it is wrapped as a comment. */
-struct node {
+/*struct node { MOVED in header
     node_t* next;
     char* key;
     void* item;
-};
+};*/
 
 
 // Initializes an empty list

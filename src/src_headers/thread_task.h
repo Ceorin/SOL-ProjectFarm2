@@ -3,7 +3,9 @@
 
     #include <stdlib.h>
 
-    #define _DEF_SOCKET_NAME
+    #ifndef _DEF_SOCKE_NAME
+        #define _DEF_SOCKET_NAME "./tmp/farm2.sck"
+    #endif
 
     int init_fileStack (size_t qlen);
     int is_open();

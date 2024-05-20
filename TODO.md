@@ -4,8 +4,8 @@
 
  - [ ] everything collector
  - - [ ] socket communication => poll
- - - [ ] timed print
- - - [ ] sorting list algorithm or sorted list structure
+ - - [x] timed print
+ - - [x] sorting list algorithm or sorted list structure
  - [ ] timeout for MasterWorker
 
 ## In Progress

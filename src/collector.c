@@ -9,8 +9,87 @@
 #include <unistd.h>
 #include <poll.h>
 #include "collector.h"
+#include "sumfun.h"
+#include "collector_print.h"
+#include <pthread.h>
+
+
+pthread_mutex_t mutex_last = PTHREAD_MUTEX_INITIALIZER;
 
  // 0 = mask is not set. by default, it is set by master, thus it considers all signals to be masked before enterign the function
+void collector_set_signals(int);
+void use_client(int);
+
+
+int main(int argc, char* argv[]) {
+    if (argc != 2) { // TODO let collector be run on its own
+        fprintf(stderr, "use as %s <socket name>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    // default 1 when called from Main, TODO when run on its own.
+    collector_set_signals(1); 
+
+    DEBUG_PRINT(fprintf (stdout, "Collector creato\narg1: %s\n", argv[1]);fflush(stdout);)
+    // create list TODO
+    list_t* result_list = empty_List(false);
+
+    // create printing thread TODO
+
+    pthread_t printing_thread;
+    test_error_isNot(0, errno = pthread_create(&(printing_thread), NULL, &printingthread, (void*)result_list), "Creating printing thread");
+    test_error_isNot(0, errno = pthread_detach(printing_thread), "Detaching printing thread");
+    // create server socket
+    /*
+    int fd_server; // listening socket
+    int fd_client; // accept => worker
+    int num_fds; // # fds validi in poll ad inizio e fine ciclo. Durante viene usato invece per tenere l'ultimo indice "aggiornabile";
+    int tmp_size; // memorizzazione dei num_fds temporanea
+    int poll_result; // return della poll, # di descrittori che hanno eventi
+
+    int readB;
+    char buf[100];
+    
+
+    */
+    sleep(2); // test insert for sorting
+    for (int i = 0; i < 20; i++) {
+        result_value *wrapper;
+        test_error(NULL, wrapper = (result_value*) malloc(sizeof(result_value)), "Creating result value mockup");
+        snprintf (wrapper->name, 10, "Ciao%d", i);
+        wrapper->sumvalue = (i%2 == 0) ? (i*2) : (i*i)-(i+1);
+        pthread_mutex_lock(&mutex_last);
+        int ret = add_Last(NULL, wrapper, result_list);
+        pthread_mutex_unlock(&mutex_last);
+        if (ret < 0) {
+            free(wrapper);
+            fprintf (stderr, "%d\t", ret);
+            perror("Adding mockup!");
+            errno = 0;
+        } else {
+            DEBUG_PRINT(fprintf(stdout, "file?: %s\n", optarg);)
+        }
+        if (i%8 == 0) {
+            sleep(1);
+        } else {
+            struct timespec x;
+            x.tv_sec=0;
+            x.tv_nsec = i*1000000;
+            nanosleep(&x, NULL);
+        }
+    }
+    pthread_mutex_lock(&mutex_last);
+    int ret = add_Last(NULL, &"ciao", result_list);
+    pthread_mutex_unlock(&mutex_last);
+
+
+    sleep(3);
+    print = 0;
+    sleep(2);
+    size_t check_list_size = result_list->size;
+    test_error_isNot(check_list_size, delete_List(&result_list, &free), "Freeing up list space");
+    DEBUG_PRINT(fprintf(stdout, "Collector concluso\n"));
+}
+
 void collector_set_signals(int mask_is_set)  {
     sigset_t mask_q;
     if (!mask_is_set)
@@ -34,50 +113,29 @@ void collector_set_signals(int mask_is_set)  {
         unmask_all();
 }
 
-// TODO let collector be run on its own
-int main(int argc, char* argv[]) {
-    collector_set_signals(1); // default 1 when called from Main, TODO when run on its own.
-    
-    
-    if (argc != 2) {
-        fprintf(stderr, "use as %s <socket name>\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
+// function that processes a request (TODO: everything. Will have the values-list as second arg probably)
+void use_client(int client_socket) {
+    printf("In use_client");
+    char myBuffer [1000] = "";
+    int err = 0, close = 0;
+    fprintf(stderr, "Using client %d\n", client_socket);
+    do {
+        err = read(client_socket, myBuffer, 5);
+        if (err<0) {
+            if (errno == EWOULDBLOCK) {
+                errno = 0;
+                break;
+            } else {
+                perror("Reading client");
+                break;
+            }
+        }
 
-    DEBUG_PRINT(fprintf (stdout, "Collector creato\narg1: %s\n", argv[1]);fflush(stdout);)
-    // create list TODO
-
-    // Setup as a server listening
-    int collector_fd_server, client_socket;
-    struct sockaddr_un collector_socket;
-
-    strncpy(collector_socket.sun_path, argv[1], UNIX_SOCKPATH_MAX);
-    collector_socket.sun_family = AF_UNIX;
-
-    unlink(collector_socket.sun_path); // if the socket has not been removed last previously
-    errno = 0; // ignoring unlink errors. The notable ones (like access requirements) will be found by socket and bind functions
-
-    // Consider - refactor using SOCK_DGRM? Would remove the need for poll and the limited (albeit big) amount of clients
-    test_error(-1, collector_fd_server = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0), "Creating collector socket");
-    // socket non-blocking => accepted connnection will be non-blocking
-    test_error(-1, bind(collector_fd_server, (struct sockaddr*)&collector_socket, sizeof(collector_socket)), "Binding collector socket");
-    test_error(-1, listen(collector_fd_server, SOMAXCONN), "Collector server - listen");
-
-    DEBUG_PRINT(fprintf(stdout, "Collector socket started - listening on %d!\n", collector_fd_server);)
-
-    
-    // creating structure for poll
-    struct pollfd* pFDs;
-    int size = _START_SIZE_POLL; // will be a dinamic array, it should not reallocate often
-    int num_FDs = 1; // collector itself
-    int tempsize = 0, pollRes = 0;
-
-    test_error(NULL, pFDs = (struct pollfd*) calloc (size, sizeof(struct pollfd)), "allocating poll structure");
-    
-    memset(pFDs, 0, sizeof(struct pollfd)*size); // calloc should set the pfds to 0, but just in case a differente implementation of calloc is useds
-
-    DEBUG_PRINT(fprintf(stdout, "Created poll fds! Are these 0? %d - %d\n", pFDs[0].fd, pFDs[size-1].fd);)
-
-    sleep(1);
-    return 0;
-} //?
+        if (err > 0) {
+            fprintf(stdout, "Collector received %s\n", myBuffer);
+            if (myBuffer[0] == 'H')
+                close = 1;
+        } 
+    } while (err > 0 && close == 0);
+    fprintf(stdout, "collector done reading -> err:%d\n", err);
+}
