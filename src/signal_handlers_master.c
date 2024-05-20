@@ -33,7 +33,7 @@ static void handle_interrupt (int signum) {
 
     handlers.sa_handler = handle_interrupt;
     test_error(sigaction(SIGHUP, &handlers, NULL), -1, "Setting SIGHUP");
-    //test_error(sigaction(SIGINT, &handlers, NULL), -1, "Setting SIGINT"); might need while developing
+    test_error(sigaction(SIGINT, &handlers, NULL), -1, "Setting SIGINT");
     test_error(sigaction(SIGQUIT, &handlers, NULL), -1, "Setting SIGQUIT");
     test_error(sigaction(SIGTERM, &handlers, NULL), -1, "Setting SIGTERM");
 

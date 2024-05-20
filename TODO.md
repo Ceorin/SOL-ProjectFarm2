@@ -5,14 +5,14 @@
  - [ ] timed insert for MasterWorker
  - [ ] better exit for thread pool deletion
 
-## In Progress
- - [ ] collector
+## In Progress..?
+ - [x] collector
  - - [x] working poll
- - - [ ] socket communication (only done with mockups)
+ - - [x] socket communication
  - - [x] timed print
  - - [x] sorting list algorithm or sorted list structure
- - [ ] finishing worker threads tasks (need to do socket communication)
- - [x] no memory leak?
+ - [x] finishing worker threads tasks
+ - [ ] no memory leak?
 
 ## Done but could clean up
  - [x] masterThread?

@@ -236,8 +236,8 @@ void* worker_thread(void* arg) {
     socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     while (connect (socket_fd, (struct sockaddr *) &sa, sizeof(sa)) == -1) {
         if (errno = ENOENT) {
-            fprintf(stderr, "Socket not found");
-            sleep(1);
+            DEBUG_PRINT(fprintf(stderr, "Socket not found");)
+            nanosleep(&(struct timespec){{0}, {10E6}}, NULL);
         } else {
             perror("Connecting to server");
             check_close = 1;
@@ -270,13 +270,18 @@ void* worker_thread(void* arg) {
                     last_write = write (socket_fd, buf+bytes_written, bytes_to_write);
 
                     if (last_write <0) {
-                        perror ("THREAD Writing");
+                        if (errno == EPIPE) {
+                            DEBUG_PRINT(printf("Collector finished too quick?"));
+                        } else {
+                            perror ("THREAD Writing");
+                        }
+                        break;
                     }
                     bytes_written+= last_write;
                     bytes_to_write -= last_write;
                 }
                 if (bytes_to_write != 0) {
-                    perror ("THREAD write not finished properly");
+                    DEBUG_PRINT( perror ("THREAD write not finished properly");)
                 }
                 // consumed inp properly
                 fclose (inp);
@@ -300,12 +305,17 @@ void* worker_thread(void* arg) {
                 last_write = write (socket_fd, buf+bytes_written, bytes_to_write);
 
                 if (last_write <0) {
-                    perror ("THREAD Writing");
+                    if (errno == EPIPE) { // multiple threads can send the ending signal, collector might have closed the socket already!
+                        DEBUG_PRINT(printf("Collector has closed");)
+                    } else {
+                        DEBUG_PRINT(perror("THREAD writing");)
+                    }
+                    break;
                 }
                 bytes_written+= last_write;
                 bytes_to_write -= last_write;
             }
-            if (bytes_to_write != 0) {
+            if (bytes_to_write != 0 && errno != EPIPE) {
                 perror ("THREAD write not finished properly");
             }
 

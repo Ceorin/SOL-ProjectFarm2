@@ -27,7 +27,7 @@ void order_print_result_list(list_t* l) {
     lines_num = (lines_num == 0) ? 0 : lines_num-1;
     for (unsigned int i = 0; i < lines_num; i++) {
         result_value *temp = (result_value*) list_getAt(l, i, false);
-        fprintf(stdout, "%s : %lld\n", temp->name, temp->sumvalue);
+        fprintf(stdout, "%lld %s\n", temp->sumvalue, temp->name);
     }
 }
 

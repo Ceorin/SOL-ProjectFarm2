@@ -30,70 +30,18 @@ int main(int argc, char* argv[]) {
     collector_set_signals(1); 
 
     DEBUG_PRINT(fprintf (stdout, "Collector creato\narg1: %s\n", argv[1]);fflush(stdout);)
-    // create list TODO
+    // create list
     list_t* result_list = empty_List(false);
 
-    // create printing thread TODO
+    // create printing thread
 
     pthread_t printing_thread;
     test_error_isNot(0, errno = pthread_create(&(printing_thread), NULL, &printingthread, (void*)result_list), "Creating printing thread");
     test_error_isNot(0, errno = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL), "setting thread to be cancelable")
     
-    // create server socket
-    /*
-    int fd_server; // listening socket
-    int fd_client; // accept => worker
-    int num_fds; // # fds validi in poll ad inizio e fine ciclo. Durante viene usato invece per tenere l'ultimo indice "aggiornabile";
-    int tmp_size; // memorizzazione dei num_fds temporanea
-    int poll_result; // return della poll, # di descrittori che hanno eventi
 
-    int readB;
-    char buf[100];
-    
-
-    */
-    // test insert for sorting
-    for (int i = 0; i < 20; i++) {
-        result_value *wrapper;
-        test_error(NULL, wrapper = (result_value*) malloc(sizeof(result_value)), "Creating result value mockup");
-        snprintf (wrapper->name, 10, "Ciao%d", i);
-        wrapper->sumvalue = (i%2 == 0) ? (i*2) : (i*i)-(i+1);
-        pthread_mutex_lock(&mutex_last);
-        int ret = add_Last(NULL, wrapper, result_list);
-        pthread_mutex_unlock(&mutex_last);
-        if (ret < 0) {
-            free(wrapper);
-            fprintf (stderr, "%d\t", ret);
-            perror("Adding mockup!");
-            errno = 0;
-        } else {
-            DEBUG_PRINT(fprintf(stdout, "file?: %s\n", wrapper->name);)
-        }
-        if (i%8 == 0) {
-            //sleep(1);
-        } else {
-            struct timespec x;
-            x.tv_sec=0;
-            x.tv_nsec = i*10000000;
-            nanosleep(&x, NULL);
-        }
-    }
-    pthread_mutex_lock(&mutex_last);
-    char* temp = (char*) malloc (sizeof (char)*10);
-    strncpy(temp, "end", sizeof(char)*10);
-    int ret = add_Last(NULL, temp, result_list);
-    pthread_mutex_unlock(&mutex_last);
-    // fine test lista
-
-    test_error_isNot(0, pthread_cancel(printing_thread), "Canceling thread");
-    test_error_isNot(0, pthread_join(printing_thread, NULL), "Joining back printing thread");
-    size_t check_list_size = result_list->size;
-    test_error_isNot(check_list_size, delete_List(&result_list, &free), "Freeing up list space");
-    DEBUG_PRINT(fprintf(stdout, "Collector list test concluso\n"));
-
-
-    // starting socket testing
-    printf("\n***Starting socket test***\n");
+    // creating socket
+    DEBUG_PRINT(printf("\n***Starting socket test***\n");)
 
     int listen_sck, client_fd;
     struct sockaddr_un my_address;
@@ -103,12 +51,9 @@ int main(int argc, char* argv[]) {
     unlink(my_address.sun_path);
     errno = 0;// errno ignored, bind will trigger the same errors
 
-    listen_sck = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
-    perror("created collector socket");
-    bind (listen_sck, (struct sockaddr*) &my_address, sizeof(my_address));
-    perror("bound collector socket");
-    listen(listen_sck, SOMAXCONN);
-    perror("listening started");
+    test_error(-1, listen_sck = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0), "creating collector socket")
+    test_error(-1, bind (listen_sck, (struct sockaddr*) &my_address, sizeof(my_address)),"binding collector socket")
+    test_error(-1, listen(listen_sck, SOMAXCONN), "listening started")
 
     // creating poll
     struct pollfd* pFDs;
@@ -125,11 +70,11 @@ int main(int argc, char* argv[]) {
 
     int go = 1, close_requested = 0;
     while (go) {
-        sleep(1);   
-        fprintf(stdout, "Waiting on poll\n");
+        DEBUG_PRINT(sleep(1);)   
+        DEBUG_PRINT(fprintf(stdout, "Waiting on poll\n");)
         test_error(-1, poll_res = poll(pFDs, num_FDs, 5000), "Poll failed");
         if (poll_res == 0){
-            fprintf(stdout, "Timed out!\n");
+            fprintf(stderr, "Timed out!\n");
             break;
         }
 
@@ -143,7 +88,7 @@ int main(int argc, char* argv[]) {
             }
 
             if (pFDs[i].fd == listen_sck) { // ready to accept new connections
-                fprintf(stdout, "***Listen socket reading***\n");
+                DEBUG_PRINT( fprintf(stdout, "***Listen socket reading***\n");)
                 do {
                     client_fd = accept(listen_sck, NULL, 0);
                     if (client_fd <0) {
@@ -152,10 +97,10 @@ int main(int argc, char* argv[]) {
                         else 
                             perror("Accepting clients");
                     } else {
-                        fprintf(stdout, "Accepted client on fd: %d\n", client_fd);
+                        DEBUG_PRINT( fprintf(stdout, "Accepted client on fd: %d\n", client_fd);)
                         int can_add = 1;
                         if (num_FDs+1 == pollsize) {
-                            fprintf(stderr, "Poll is full! Create a bigger one\n");
+                            DEBUG_PRINT( fprintf(stderr, "Poll is full! Create a bigger one\n");)
                             pFDs = (struct pollfd*) realloc (pFDs, (pollsize+_START_SIZE_POLL) * sizeof(struct pollfd));
                             if (errno == ENOMEM) {
                                 perror("Reallocating poll structure");
@@ -173,7 +118,7 @@ int main(int argc, char* argv[]) {
                     }
                 } while (client_fd >= 0);
             } else { // a connection wants to write something
-                printf("Client%d wants to write\n", pFDs[i].fd);
+                DEBUG_PRINT( printf("Client%d wants to write\n", pFDs[i].fd);)
                 char buf[300];
                 int last_read, bytes_read = 0, bytes_to_read = sizeof(result_value);
                 while (bytes_to_read > 0) { 
@@ -185,29 +130,42 @@ int main(int argc, char* argv[]) {
                 }
                 if (bytes_to_read != 0)
                     perror("finishing read");
-                
-                result_value test;
-                strncpy(test.name, buf, sizeof(test.name));
-                memcpy(&(test.sumvalue), buf+sizeof(test.name), sizeof(test.sumvalue));
-                printf("client said: %s : %lld\n", test.name, test.sumvalue); 
 
-                if (!strncmp(test.name, "../", sizeof("../"))) {
+                // convert buf in result_value
+                result_value *wrapper;
+                test_error(NULL, wrapper = (result_value*) malloc(sizeof(result_value)), "Creating result_value data");
+                strncpy(wrapper->name, buf, sizeof(wrapper->name));
+                memcpy(&(wrapper->sumvalue), buf+sizeof(wrapper->name), sizeof(wrapper->sumvalue));
+                DEBUG_PRINT (printf("client said: %s : %lld\n", wrapper->name, wrapper->sumvalue);) 
+                if (!strncmp(wrapper->name, "../", sizeof("../"))) {
                     pFDs[i].fd = -1;
                     num_FDs--;
                     close_requested = 1;
-                } else if (!strncmp(test.name, "./", sizeof("./"))) {
+                } else if (!strncmp(wrapper->name, "./", sizeof("./"))) {
                     pFDs[i].fd = -1; // I don't want to write anymore anyway
                     num_FDs--;
-                }  
+                } else {
+                    pthread_mutex_lock(&mutex_last);
+                    int ret = add_Last(NULL, wrapper, result_list);
+                    pthread_mutex_unlock(&mutex_last);
+                    if (ret < 0) {
+                        free(wrapper);
+                        fprintf (stderr, "%d\t", ret);
+                        perror("Adding result!");
+                        errno = 0;
+                    } else {
+                        DEBUG_PRINT(fprintf(stdout, "file?: %s\n", wrapper->name);)
+                    } 
+                } 
             }
 
         }
 
-        // debug
+        DEBUG_PRINT(
         fprintf(stdout,  "FD inside now:\n");
         for (int i = 0; i<num_FDs; i++) {
             printf("%d\t", pFDs[i].fd);
-        }
+        })
 
         // removing closed FD 
         for (int i = 0; i< num_FDs; i++) {
@@ -222,19 +180,19 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // debug
+        DEBUG_PRINT(
         fprintf(stdout,  "FD inside after removal:\n");
         for (int i = 0; i<num_FDs; i++) {
             printf("%d\t", pFDs[i].fd);
         }
-        fflush(stdout);
+        fflush(stdout);)
         
         
         if (close_requested) {
             if (num_FDs == 1)
                 go = 0;
             else {
-                printf("Close requested but can't yet\n");
+                DEBUG_PRINT(printf("Close requested but can't yet\n");)
             }
         }
 
@@ -247,11 +205,29 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    printf("end connection test\n");
+    pthread_mutex_lock(&mutex_last);
+    char* fake_end = malloc(sizeof(char));
+    int ret = add_Last(NULL, fake_end, result_list);
+    if (ret < 0) {
+        free(fake_end);
+        perror("Closing result list");
+        errno = 0;
+    }
+    pthread_mutex_unlock(&mutex_last);
+    // fine test lista
+
+    test_error_isNot(0, pthread_cancel(printing_thread), "Canceling thread");
+    test_error_isNot(0, pthread_join(printing_thread, NULL), "Joining back printing thread");
+    size_t check_list_size = result_list->size;
+    test_error_isNot(check_list_size, delete_List(&result_list, &free), "Freeing up list space");
+    DEBUG_PRINT(fprintf(stdout, "Collector list test concluso\n"));
+
+
+    DEBUG_PRINT( printf("end collector\n");)
     unlink(my_address.sun_path);
 
     close(listen_sck);
-    
+    exit(EXIT_SUCCESS);
 }
 
 

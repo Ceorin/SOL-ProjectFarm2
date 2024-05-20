@@ -86,7 +86,10 @@ cleanBuild :
 
 cleanTest :
 	-rm $(TEST_FOLDER)/*.o
-	-rm -f generafile
+	-rm generafile
+	-rm *.dat
+	-rm expected.txt
+	-rm -f -r testdir
 
 test1 :
 	test/test.sh

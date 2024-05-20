@@ -308,12 +308,12 @@ void masterThread(int argc, char** argv) {
         free(test);
         
     }
-
+    size_t testSize = maybe_files->size;
+    test_error_isNot(testSize, delete_List(&maybe_files, &free), "Deleting file and directory list");
+    
     // whether I exited from finishing the list of items or by terminating the pool, I need to free the memory.
     test_error_isNot(0, destroy_pool(), "Deleting threadpool");
             
-    size_t testSize = maybe_files->size;
-    test_error_isNot(testSize, delete_List(&maybe_files, &free), "Deleting file and directory list");
     //TODO better
 }//?
 
