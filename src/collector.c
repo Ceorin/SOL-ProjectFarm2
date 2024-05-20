@@ -110,16 +110,25 @@ int main(int argc, char* argv[]) {
     listen(listen_sck, SOMAXCONN);
     perror("listening started");
 
-    client_fd = accept(listen_sck, NULL, 0);
-    if (client_fd == -1) {
-        fprintf(stderr, "client %d\t", client_fd);
-        perror("accept");
-    } else {
-        result_value test;
-        read(client_fd, &test, sizeof(test));
-        printf("client said: %s : %lld\n", test.name, test.sumvalue);
-    }
-    printf("end connection test\n");
+    int go = 1;
+    do {
+        client_fd = accept(listen_sck, NULL, 0);
+        if (client_fd == -1) {
+            fprintf(stderr, "client %d\t", client_fd);
+            perror("accept");
+            go = 0;
+        } else {
+            result_value test;
+            read(client_fd, &test, sizeof(test));
+            printf("client said: %s : %lld\n", test.name, test.sumvalue);
+            if (!strncmp(test.name, "./", sizeof("./"))) {
+                go = 0;
+            }
+        }
+    } while (go);
+
+        printf("end connection test\n");
+    
 }
 
 void collector_set_signals(int mask_is_set)  {

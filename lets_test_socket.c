@@ -8,7 +8,7 @@
 #include <string.h>
 #include "sumfun.h"
 
-int main () {
+int main (int argc, char* argv[]) {
     int my_socket;
     struct sockaddr_un sa;
     strncpy(sa.sun_path, SOCKNAME, UNIX_PATH_MAX);
@@ -26,7 +26,7 @@ int main () {
     }
 
     result_value buf;
-    strncpy(buf.name, "Hello!", 256);
+    strncpy(buf.name, argv[1], 256);
     buf.sumvalue = 100;
 
     write (my_socket, &buf, sizeof(buf));
