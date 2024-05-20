@@ -15,6 +15,7 @@
 collector
 farm
 test/generafile
+nworkeratext.txt
 
 # Ignore files used during executions in the default directory
 tmp/*

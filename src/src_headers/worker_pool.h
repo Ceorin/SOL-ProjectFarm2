@@ -7,6 +7,7 @@
     int add_thread();
     int delete_thread();
     int destroy_pool();
+    int pool_size();
 
 
 #endif

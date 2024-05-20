@@ -308,9 +308,19 @@ void masterThread(int argc, char** argv) {
         free(test);
         
     }
+    // freeing list space (if testSize > 0 => exited before consuming all items)
     size_t testSize = maybe_files->size;
     test_error_isNot(testSize, delete_List(&maybe_files, &free), "Deleting file and directory list");
     
+    // writing number of working threads at exit 
+    FILE *remember_to_write_thread_num = fopen("nworkeratexit.txt", "w");
+    if (remember_to_write_thread_num == NULL) {
+        DEBUG_PRINT (perror ("Cannot create nworkeratexit.txt");)
+    } else {
+        fprintf(remember_to_write_thread_num, "%d\n", pool_size());
+        fclose(remember_to_write_thread_num);
+    }
+
     // whether I exited from finishing the list of items or by terminating the pool, I need to free the memory.
     test_error_isNot(0, destroy_pool(), "Deleting threadpool");
             
