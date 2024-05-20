@@ -24,11 +24,27 @@ int main (int argc, char* argv[]) {
             return -1;
         }
     }
+    result_value temp;
+    strncpy(temp.name, argv[1], sizeof(temp.name));
+    temp.sumvalue = 100;
 
-    result_value buf;
-    strncpy(buf.name, argv[1], 15);
-    buf.sumvalue = 100;
+    char buf[300];
+    strncpy(buf, temp.name, sizeof(temp.name));
+    memcpy(buf+sizeof(temp.name), &(temp.sumvalue), sizeof(temp.sumvalue));
 
-    write (my_socket, &buf, sizeof(buf));
+    int last_write, bytes_written = 0, bytes_to_write = sizeof(buf);
+    while (bytes_to_write > 0) {
+        last_write = write (my_socket, buf+bytes_written, bytes_to_write);
+
+        if (last_write <0) {
+            perror ("Writing");
+        }
+
+        bytes_written+= last_write;
+        bytes_to_write -= last_write;
+    }
+
+    if (bytes_to_write != 0) 
+        perror("finishing write");
     return 0;
 }
