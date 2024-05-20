@@ -6,7 +6,7 @@
  - - [ ] socket communication => poll
  - - [x] timed print
  - - [x] sorting list algorithm or sorted list structure
- - [ ] timeout for MasterWorker
+ - [ ] timed insert for MasterWorker
 
 ## In Progress
  - [ ] finishing worker threads tasks (need to do socket communication)

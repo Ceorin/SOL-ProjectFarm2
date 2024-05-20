@@ -70,11 +70,11 @@ int main(int argc, char* argv[]) {
             DEBUG_PRINT(fprintf(stdout, "file?: %s\n", wrapper->name);)
         }
         if (i%8 == 0) {
-            sleep(1);
+            //sleep(1);
         } else {
             struct timespec x;
             x.tv_sec=0;
-            x.tv_nsec = i*1000000;
+            x.tv_nsec = i*10000000;
             nanosleep(&x, NULL);
         }
     }
@@ -83,17 +83,43 @@ int main(int argc, char* argv[]) {
     strncpy(temp, "end", sizeof(char)*10);
     int ret = add_Last(NULL, temp, result_list);
     pthread_mutex_unlock(&mutex_last);
-
-
-    sleep(3);
-    print = 0;
-    sleep(2);
+    // fine test lista
 
     test_error_isNot(0, pthread_cancel(printing_thread), "Canceling thread");
     test_error_isNot(0, pthread_join(printing_thread, NULL), "Joining back printing thread");
     size_t check_list_size = result_list->size;
     test_error_isNot(check_list_size, delete_List(&result_list, &free), "Freeing up list space");
-    DEBUG_PRINT(fprintf(stdout, "Collector concluso\n"));
+    DEBUG_PRINT(fprintf(stdout, "Collector list test concluso\n"));
+
+
+    // starting socket testing
+    printf("\n***Starting socket test***\n");
+
+    int listen_sck, client_fd;
+    struct sockaddr_un my_address;
+    strncpy(my_address.sun_path, "test_socket.sck", UNIX_SOCKPATH_MAX);
+    my_address.sun_family = AF_UNIX;
+
+    unlink(my_address.sun_path);
+    // errno ignored, bind will trigger the same errors
+
+    listen_sck = socket(AF_UNIX, SOCK_STREAM, 0);
+    perror("created collector socket");
+    bind (listen_sck, (struct sockaddr*) &my_address, sizeof(my_address));
+    perror("bound collector socket");
+    listen(listen_sck, SOMAXCONN);
+    perror("listening started");
+
+    client_fd = accept(listen_sck, NULL, 0);
+    if (client_fd == -1) {
+        fprintf(stderr, "client %d\t", client_fd);
+        perror("accept");
+    } else {
+        result_value test;
+        read(client_fd, &test, sizeof(test));
+        printf("client said: %s : %lld\n", test.name, test.sumvalue);
+    }
+    printf("end connection test\n");
 }
 
 void collector_set_signals(int mask_is_set)  {

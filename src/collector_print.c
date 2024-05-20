@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <errno.h>
 
-int print = 1; // continue printing
 
 node_t* order_list_first(node_t*, node_t*);
 
