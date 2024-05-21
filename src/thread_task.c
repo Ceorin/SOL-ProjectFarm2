@@ -173,8 +173,12 @@ int get_request (char *ref_result) {
         pthread_cond_wait(&can_pop, &mutex_stack);
     } 
     if (requested_terminations>0) { // if it exits from here will free from the exit function of the thread
-        ref_result = NULL;
-        return 1;
+        if (next > 0 && freed) { // we need to finish consuming
+            DEBUG_PRINT(fprintf(stdout, "We'll exit when we're done consuming");)
+        } else {
+            ref_result = NULL;
+            return 1;
+        }
         // releases mutex on cleanup
     }
     
