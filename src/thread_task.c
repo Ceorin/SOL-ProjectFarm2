@@ -261,7 +261,7 @@ void* worker_thread(void* arg) {
     }
 
     if (check_close == 1) {
-        wait_delete()
+        wait_delete();
     }   
 
     while (!check_close) {
