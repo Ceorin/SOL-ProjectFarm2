@@ -210,27 +210,23 @@ void delete_request () {
 /* takes mutex and exits (release mutex on exit); 
 increases the count of terminated thread if the threadpool has been destroyed */
 static void count_exit (void* socket_fd) {
+    requested_terminations--;
     if (freed) {
-        if (requested_terminations) {
-            // TODO send "finished" message through the connection.
-            pthread_cond_signal(&can_remove);
-        }
+        pthread_cond_signal(&can_remove);
     }
     //   fprintf(stdout, "%ld exit\n", requested_terminations);
-    requested_terminations--;
+    
     pthread_mutex_unlock(&mutex_stack); // should always have mutex while exiting with this
     if (socket_fd!=NULL && *((int*) socket_fd)!=-1)
         close(*((int*) socket_fd));
 }
 
-void wait_delete() { // TODO BETTER
+void wait_delete() { // Consumes a termination request and just that
     pthread_mutex_lock(&mutex_stack);
     while (requested_terminations==0) {
         DEBUG_PRINT(fprintf(stdout, "waiting to die\n");)
         pthread_cond_wait(&can_pop, &mutex_stack);
     }
-    requested_terminations++; // caught the request for someone else but terminates on its own
-    pthread_cond_signal(&can_push);
     // exits with lock and everything, cleanup function will release
 }
 
@@ -254,19 +250,19 @@ void* worker_thread(void* arg) {
             nanosleep(&(struct timespec){{0}, {10E7}}, NULL); // sleeps .01 second
         } else {
             DEBUG_PRINT(perror("Connecting to server");)
-            check_close = 2; // no need to unlock at exit
+            check_close = 1; // no need to unlock at exit
             break;
         }
         if (freed) { // if I fail to catch it once, it only goes from 0 to 1 once, so I'll take it the next cycle anyway (one more try to connect doesn't hurt anyway)
             DEBUG_PRINT(fprintf(stdout, "Thread didn't do anything\n");)
-            check_close = 2;
+            check_close = 1;
             break;
         }
     }
-/*
+
     if (check_close == 1) {
         wait_delete()
-    }*/
+    }   
 
     while (!check_close) {
         check_close = get_request(filename);
@@ -347,6 +343,6 @@ void* worker_thread(void* arg) {
     }
     
     DEBUG_PRINT(fprintf (stdout, "Thread exited with status %d\n", check_close);)
-    pthread_cleanup_pop((check_close == 2) ? 0 : 1);
+    pthread_cleanup_pop(1);
     return 0;
 }
