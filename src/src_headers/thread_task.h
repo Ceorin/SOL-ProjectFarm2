@@ -2,8 +2,9 @@
     #define FUNCTION_TASK_HEADER
 
     #include <stdlib.h>
+    #include "collector.h"
 
-    #ifndef _DEF_SOCKE_NAME
+    #ifndef _DEF_SOCKET_NAME
         #define _DEF_SOCKET_NAME "./tmp/farm2.sck"
     #endif
 

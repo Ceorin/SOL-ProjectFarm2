@@ -27,7 +27,7 @@ unsigned long maxsize; // size of the stack after initialization
 // TODO - requests to remove threads that are waiting.
 unsigned long requested_terminations; 
 __sig_atomic_t canAdd; // will only be modified by close_fileStack, and only to 0.
-short freed;
+__sig_atomic_t freed;
 
 unsigned long waiting_deletion;
 
@@ -224,9 +224,10 @@ void wait_delete() { // TODO BETTER
 void* worker_thread(void* arg) { 
     // does it need arguments?
     int socket_fd=-1; //def value
+    short check_close;
     pthread_cleanup_push(&count_exit, (void*)&socket_fd);
     char filename[_STRINGSIZE];
-    short check_close = 0;
+    check_close = 0;
     result_value myTemp;
     FILE *inp;
     struct sockaddr_un sa;
@@ -235,12 +236,17 @@ void* worker_thread(void* arg) {
 
     socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     while (connect (socket_fd, (struct sockaddr *) &sa, sizeof(sa)) == -1) {
-        if (errno = ENOENT) {
+        if (errno == ENOENT) {
             DEBUG_PRINT(fprintf(stderr, "Socket not found");)
-            nanosleep(&(struct timespec){{0}, {10E6}}, NULL);
+            nanosleep(&(struct timespec){{0}, {10E6}}, NULL); // sleeps 1 millisecond
         } else {
-            perror("Connecting to server");
-            check_close = 1;
+            DEBUG_PRINT(perror("Connecting to server");)
+            check_close = 2; // no need to unlock at exit
+            break;
+        }
+        if (freed) { // if I fail to catch it once, it only goes from 0 to 1 once, so I'll take it the next cycle anyway (one more try to connect doesn't hurt anyway)
+            DEBUG_PRINT(fprintf(stdout, "Thread didn't do anything\n");)
+            check_close = 2;
             break;
         }
     }
@@ -328,6 +334,6 @@ void* worker_thread(void* arg) {
     }
     
     DEBUG_PRINT(fprintf (stdout, "Thread exited with status %d\n", check_close);)
-    pthread_cleanup_pop(1);
+    pthread_cleanup_pop((check_close == 2) ? 0 : 1);
     return 0;
 }
