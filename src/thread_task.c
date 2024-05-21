@@ -251,7 +251,7 @@ void* worker_thread(void* arg) {
     while (connect (socket_fd, (struct sockaddr *) &sa, sizeof(sa)) == -1) {
         if (errno == ENOENT) {
             DEBUG_PRINT(fprintf(stderr, "Socket not found");)
-            nanosleep(&(struct timespec){{0}, {10E6}}, NULL); // sleeps 1 millisecond
+            nanosleep(&(struct timespec){{0}, {10E7}}, NULL); // sleeps .01 second
         } else {
             DEBUG_PRINT(perror("Connecting to server");)
             check_close = 2; // no need to unlock at exit
