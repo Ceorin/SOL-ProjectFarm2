@@ -116,8 +116,17 @@ int delete_fileStack (size_t thread_num) {
     // if freed is 1, then the last thread will delete the mutex variables
     
     pthread_mutex_lock(&mutex_stack);
-    while (requested_terminations>0)
-        pthread_cond_wait(&can_remove, &mutex_stack);
+    while (requested_terminations>0) {
+        struct timespec badExit;
+        test_error(-1, clock_gettime(CLOCK_REALTIME, &badExit), "Creating safety clock");
+        badExit.tv_sec +=10;
+        if (ETIMEDOUT == pthread_cond_timedwait(&can_remove, &mutex_stack, &badExit)) {
+            // TODO - TIMEDWAIT! What if noone is working but the stack is still there?
+            DEBUG_PRINT(perror("destroy_filestack:"));
+            break;
+        }
+        DEBUG_PRINT(perror("timedwait?"));
+    }
     pthread_mutex_unlock(&mutex_stack);
 
     pthread_cond_destroy(&can_remove);
