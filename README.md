@@ -42,9 +42,9 @@ The makefile can also be used to clean the project folder by running 'make clean
 0.9 - Most core functionalities are up and running. Almost no extra functionality is available.
     Some optimization has been performed but the project requires cleaning and to fix some known bugs.
 
-## Known bugs
+## Known issues
 **DANGEROUS**
  - There is a possibility for the main program to go into deadlock while closing. Further investigation needed, may require to refactor using non-detached threads.
- 
+
 **light**
  - RELATED TO THE ABOVE - There is a possibility that due to how the program termination can be faulty, the last result (and only the last, from what is known), can go missing.
